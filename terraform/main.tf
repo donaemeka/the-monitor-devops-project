@@ -1,5 +1,5 @@
 # terraform/main.tf
-# This VPC configuration is for the Monitor project
+
 terraform {
   required_providers {
     aws = {
@@ -10,61 +10,24 @@ terraform {
 }
 
 provider "aws" {
-  region = "eu-west-2" # Using London region
+  region = "eu-west-2"
 }
 
-# 1. Create a dedicated VPC (a virtual network)
-resource "aws_vpc" "main_vpc" {
-  cidr_block = "10.0.0.0/16"
-  tags = {
-    Name = "Main-VPC"
-  }
+# Use the EXISTING VPC that you already have
+data "aws_vpc" "existing_vpc" {
+  id = "vpc-0280c538c474724ba" # Your existing VPC ID
 }
 
-# 2. Create an Internet Gateway (gives our VPC access to the internet)
-resource "aws_internet_gateway" "main_gw" {
-  vpc_id = aws_vpc.main_vpc.id
-  tags = {
-    Name = "Main-Internet-Gateway"
-  }
+# Use the EXISTING Subnet that you already have
+data "aws_subnet" "existing_subnet" {
+  id = "subnet-0955441f00fafb2e7" # You need to find the actual subnet ID from your VPC
 }
 
-# 3. Create a Route Table (defines the rules for network traffic)
-resource "aws_route_table" "public_route" {
-  vpc_id = aws_vpc.main_vpc.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main_gw.id
-  }
-
-  tags = {
-    Name = "Public-Route-Table"
-  }
-}
-
-# 4. Create a Subnet (a smaller segment of the VPC, in a specific data center)
-resource "aws_subnet" "public_subnet" {
-  vpc_id            = aws_vpc.main_vpc.id
-  cidr_block        = "10.0.1.0/24"
-  availability_zone = "eu-west-2a"  # Availability zone for London region
-
-  tags = {
-    Name = "Public-Subnet"
-  }
-}
-
-# 5. Associate the Route Table with the Subnet
-resource "aws_route_table_association" "public_assoc" {
-  subnet_id      = aws_subnet.public_subnet.id
-  route_table_id = aws_route_table.public_route.id
-}
-
-# 6. Now create the Security Group INSIDE the new VPC
+# Create the Security Group INSIDE the existing VPC
 resource "aws_security_group" "monitor_sg" {
   name        = "monitor-sg"
   description = "Allow HTTP and SSH traffic"
-  vpc_id      = aws_vpc.main_vpc.id
+  vpc_id      = data.aws_vpc.existing_vpc.id # Use the existing VPC
 
   ingress {
     from_port   = 80
@@ -92,16 +55,15 @@ resource "aws_security_group" "monitor_sg" {
   }
 }
 
-# 7. Create the EC2 instance in the new public subnet
+# Create the EC2 instance in the EXISTING subnet
 resource "aws_instance" "monitor_server" {
-  # Ubuntu 24.04 LTS AMI for eu-west-2 (London)
-  ami           = "ami-0379821d182aac933" # Use the exact AMI ID from your console
+  ami           = "ami-0379821d182aac933" # Ubuntu 22.04 LTS for eu-west-2
   instance_type = "t2.micro"
-  key_name      = "monitor-key" # Ensure this key exists in eu-west-2
+  key_name      = "monitor-key" # Make sure this key exists in eu-west-2
 
-  subnet_id                   = aws_subnet.public_subnet.id
+  subnet_id                   = data.aws_subnet.existing_subnet.id # Use existing subnet
   vpc_security_group_ids      = [aws_security_group.monitor_sg.id]
-  associate_public_ip_address = true
+  associate_public_ip_address = true # This should work since you have an Internet Gateway
 
   tags = {
     Name = "Monitor-Server"
