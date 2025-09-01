@@ -1,5 +1,5 @@
 # terraform/main.tf
-
+# This VPC configuration is for the Monitor project
 terraform {
   required_providers {
     aws = {
