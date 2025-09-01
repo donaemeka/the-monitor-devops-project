@@ -2,7 +2,7 @@
 
 # Local Terraform directory
 **/.terraform/*
-
+inventory.ini
 # .tfstate files
 *.tfstate
 *.tfstate.*
