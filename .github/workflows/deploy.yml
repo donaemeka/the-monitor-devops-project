@@ -82,10 +82,8 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/private_key.pem
           chmod 600 ~/.ssh/private_key.pem
           
-          # SIMPLE FIX: Wait a bit, then get the IP from Terraform state file
-          sleep 5
-          IP=$(grep -o '"public_ip": "[^"]*"' ${{ env.TF_DIR }}/terraform.tfstate | cut -d'"' -f4)
-          ssh-keyscan -H $IP >> ~/.ssh/known_hosts
+          # Use the IP passed from the previous job
+          ssh-keyscan -H ${{ needs.terraform-apply.outputs.server_ip }} >> ~/.ssh/known_hosts
 
       # Step 2: Run the Ansible playbook to install Docker and deploy the app
       - name: "⚡ Run Ansible Playbook"
