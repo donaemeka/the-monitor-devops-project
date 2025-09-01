@@ -1,4 +1,5 @@
-# terraform/main.tf
+# Infrastructure for The Monitor DevOps Project
+# Using existing VPC: vpc-0280c538c474724ba
 
 terraform {
   required_providers {
