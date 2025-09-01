@@ -21,7 +21,7 @@ jobs:
         with:
           terraform_version: "1.5.0"
 
-      # Step 3: Initialize Terraform (FIXED - added AWS credentials to init)
+      # Step 3: Initialize Terraform
       - name: 🔧 Terraform Init
         run: terraform init
         working-directory: ./terraform
@@ -29,7 +29,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # Step 4: See what Terraform will create (good for validation)
+      # Step 4: See what Terraform will create
       - name: 📋 Terraform Plan
         run: terraform plan
         working-directory: ./terraform
@@ -37,7 +37,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # Step 5: Create the AWS infrastructure (EC2 instance, security group, etc.)
+      # Step 5: Create the AWS infrastructure
       - name: ✅ Terraform Apply
         run: terraform apply -auto-approve
         working-directory: ./terraform
@@ -51,9 +51,9 @@ jobs:
         run: |
           # Wait a moment for Terraform output to be available
           sleep 10
-          # Extract the public IP address from Terraform output (silence debug output)
-          IP=$(terraform output -raw public_ip 2>/dev/null | tail -1)
-          # Store the IP in an environment variable for the next step
+          # Extract ONLY the public IP address (clean any debug output)
+          IP=$(terraform output -raw public_ip 2>&1 | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          # Store the clean IP in an environment variable
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "Server IP: $IP"
         working-directory: ./terraform
