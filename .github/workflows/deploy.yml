@@ -45,14 +45,14 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # Step 6: Get the server's public IP address from Terraform output
+      # Step 6: Get the server's public IP address from Terraform output (FIXED)
       - name: 📝 Get IP Address
         id: get-ip
         run: |
           # Wait a moment for Terraform output to be available
           sleep 10
-          # Extract the public IP address from Terraform output
-          IP=$(terraform output -raw public_ip)
+          # Extract the public IP address from Terraform output (silence debug output)
+          IP=$(terraform output -raw public_ip 2>/dev/null | tail -1)
           # Store the IP in an environment variable for the next step
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "Server IP: $IP"
