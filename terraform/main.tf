@@ -95,7 +95,7 @@ resource "aws_security_group" "monitor_sg" {
 # 7. Create the EC2 instance in the new public subnet
 resource "aws_instance" "monitor_server" {
   # Ubuntu 24.04 LTS AMI for eu-west-2 (London)
-  ami           = "ami-046c2581111878233" # Use the exact AMI ID from your console
+  ami           = "ami-0379821d182aac933" # Use the exact AMI ID from your console
   instance_type = "t2.micro"
   key_name      = "monitor-key" # Ensure this key exists in eu-west-2
 
