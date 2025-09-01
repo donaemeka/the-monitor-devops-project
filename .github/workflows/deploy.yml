@@ -78,14 +78,14 @@ jobs:
       # Step 1: Set up SSH to allow Ansible to connect to the new EC2 server
       - name: "🔑 Configure SSH"
         run: |
-          # Create the .ssh directory
           mkdir -p ~/.ssh/
-          # Create a file containing the private key from GitHub Secrets
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/private_key.pem
-          # Change the file permissions so SSH will accept it (read/write for user only)
           chmod 600 ~/.ssh/private_key.pem
-          # Automatically add the server's IP to the known_hosts file to avoid a prompt
-          ssh-keyscan -H ${{ needs.terraform-apply.outputs.server_ip }} >> ~/.ssh/known_hosts
+          
+          # SIMPLE FIX: Wait a bit, then get the IP from Terraform state file
+          sleep 5
+          IP=$(grep -o '"public_ip": "[^"]*"' ${{ env.TF_DIR }}/terraform.tfstate | cut -d'"' -f4)
+          ssh-keyscan -H $IP >> ~/.ssh/known_hosts
 
       # Step 2: Run the Ansible playbook to install Docker and deploy the app
       - name: "⚡ Run Ansible Playbook"
