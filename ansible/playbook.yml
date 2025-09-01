@@ -1,0 +1,85 @@
+---
+- name: Configure Ubuntu Server for The Monitor
+  hosts: all  # Run on all servers in our list
+  become: yes # Run commands with sudo
+
+  tasks:
+    # Update the list of available software
+    - name: Update apt package cache
+      apt:
+        update_cache: yes
+
+    # Install tools needed to install Docker
+    - name: Install required system packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    # Add Docker's official GPG key (for security)
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    # Add Docker's repository to our software sources list
+    - name: Add Docker repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable
+        state: present
+
+    # Install Docker itself
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: yes
+
+    # Download and install Docker Compose
+    - name: Install Docker Compose
+      get_url:
+        url: https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755' # Make the file executable
+
+    # Create a folder for our application
+    - name: Create application directory
+      file:
+        path: /opt/the-monitor
+        state: directory
+        mode: '0755'
+
+    # Copy our configuration files to the server
+    - name: Copy Docker Compose file
+      copy:
+        src: "../docker-compose.yml"
+        dest: "/opt/the-monitor/docker-compose.yml"
+
+    - name: Copy Caddyfile
+      copy:
+        src: "../Caddyfile"
+        dest: "/opt/the-monitor/Caddyfile"
+
+    - name: Copy Prometheus config
+      copy:
+        src: "../prometheus.yml"
+        dest: "/opt/the-monitor/prometheus.yml"
+
+    # THE MOST IMPORTANT COMMAND: Start all the containers!
+    - name: Start the application stack with Docker Compose
+      community.docker.docker_compose_v2:
+        project_src: /opt/the-monitor
+        state: present
+
+    # Ensure Docker starts automatically if the server reboots
+    - name: Ensure Docker service is running and enabled
+      systemd:
+        name: docker
+        state: started
+        enabled: yes

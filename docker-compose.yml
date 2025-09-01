@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # The Traffic Director - routes requests to the right container
+  caddy:
+    image: caddy:2-alpine # Use the official Caddy image
+    restart: unless-stopped # Always restart if it stops
+    ports:
+      - "80:80" # Map the server's port 80 to the container's port 80
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile # Use our custom config
+    networks:
+      - monitor-net # Put this container on the monitor-net network
+
+  # The WordPress Blog
+  wordpress:
+    image: wordpress:php8.2-apache
+    restart: unless-stopped
+    environment:
+      WORDPRESS_DB_HOST: db         # Tells WordPress where the database is
+      WORDPRESS_DB_USER: wpuser
+      WORDPRESS_DB_PASSWORD: wppassword
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wordpress_data:/var/www/html # Save blog data permanently
+    networks:
+      - monitor-net
+
+  # The Database for WordPress
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wpuser
+      MYSQL_PASSWORD: wppassword
+      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+    volumes:
+      - db_data:/var/lib/mysql # Save database data permanently
+    networks:
+      - monitor-net
+
+  # The Monitoring System - collects metrics
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - monitor-net
+
+  # The Monitoring Dashboard - shows graphs
+  grafana:
+    image: grafana/grafana-enterprise:latest
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123 # Set the login password
+    volumes:
+      - grafana_data:/var/lib/grafana # Save dashboard settings
+    networks:
+      - monitor-net
+
+  # A tool that collects server health stats (CPU, Memory)
+  node_exporter:
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro # Give read-only access to system data
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+    networks:
+      - monitor-net
+
+# Define volumes to save data even if containers restart
+volumes:
+  wordpress_data:
+  db_data:
+  grafana_data:
+
+# Create a custom network so containers can talk to each other
+networks:
+  monitor-net:
