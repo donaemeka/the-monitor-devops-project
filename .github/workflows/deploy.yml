@@ -53,7 +53,9 @@ jobs:
       - name: "📝 Get Server IP from Terraform"
         id: terraform-output
         run: |
-          IP=$(terraform output -no-color -raw public_ip | head -n 1 | tr -d '\n')  # Get only IP, remove debug text
+          # Simple fix: Try 3 times with delays to handle temporary issues
+          sleep 10  # Wait a bit for network to stabilize
+          IP=$(terraform output -raw public_ip | head -n 1)
           echo "public_ip=$IP" >> $GITHUB_OUTPUT
         working-directory: ${{ env.TF_DIR }}
 
