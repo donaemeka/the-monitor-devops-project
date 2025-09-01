@@ -21,6 +21,11 @@ jobs:
         with:
           terraform_version: "1.5.0"
 
+         # >>> ADD THIS STEP <<<
+      - name: 🔧 Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+        
       # Step 3: See what Terraform will create (good for validation)
       - name: 📋 Terraform Plan
         run: terraform plan
