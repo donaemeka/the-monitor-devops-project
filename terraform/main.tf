@@ -26,7 +26,7 @@ data "aws_subnet" "existing_subnet" {
 
 # Create the Security Group INSIDE the existing VPC
 resource "aws_security_group" "monitor_sg" {
-  name        = "monitor-sg"
+  name        = "monitor-sg-main-project"
   description = "Allow HTTP and SSH traffic"
   vpc_id      = data.aws_vpc.existing_vpc.id # Use the existing VPC
 
