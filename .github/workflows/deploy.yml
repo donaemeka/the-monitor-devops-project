@@ -52,7 +52,9 @@ jobs:
       # Step 5: Capture the public IP output from Terraform and save it for the next job
       - name: "📝 Get Server IP from Terraform"
         id: terraform-output # This gives the step an ID so we can reference its output later
-        run: echo "public_ip=$(terraform output -no-color -raw public_ip)" >> $GITHUB_OUTPUT
+        run: |
+          IP=$(terraform output -no-color -raw public_ip | head -n 1)  # Take only the first line
+          echo "public_ip=$IP" >> $GITHUB_OUTPUT
         working-directory: ${{ env.TF_DIR }}
 
     # This allows us to pass the server_ip from this job to the next job
