@@ -1,95 +1,70 @@
-# .github/workflows/deploy.yml
+name: 🚀 Simple Deploy
 
-# The name of this workflow, which appears in the GitHub Actions tab
-name: 🚀 Deploy The Monitor Stack
-
-# This defines what event triggers the workflow
 on:
-  push: # Trigger when someone pushes code
-    branches: [ main ] # Only trigger if the push is to the "main" branch
+  push:
+    branches: [ main ]
 
-# Environment variables available to all jobs in this workflow
-env:
-  TF_DIR: './terraform'   # Path to the Terraform code
-  ANSIBLE_DIR: './ansible' # Path to the Ansible code
-
-# Jobs are a set of steps that execute on the same runner (a fresh virtual machine)
 jobs:
-  # JOB 1: This job uses Terraform to create the AWS infrastructure
-  terraform-apply:
-    name: "🛠️ Terraform - Build Infrastructure" # Name shown in the UI
-    runs-on: ubuntu-latest # This job will run on a fresh Ubuntu VM provided by GitHub
-    environment: production # This links to the Environment and secrets we set up
-
-    # Steps are a sequence of tasks that will be executed as part of the job
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
     steps:
-      # Step 1: Checkout (download) the code from this repository
-      - name: "📦 Checkout code"
-        uses: actions/checkout@v4 # This is a pre-built action for checking out code
+      # Step 1: Get the code from the repository
+      - name: 📦 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # Step 2: Install the specific version of Terraform on the GitHub runner
-      - name: "⚙️ Setup Terraform"
-        uses: hashicorp/setup-terraform@v2 # Official action from HashiCorp
-        with: # Parameters for the action
-          terraform_version: "1.5.0" # The exact version of Terraform to install
+      # Step 2: Install Terraform
+      - name: 🛠️ Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.5.0"
 
-      # Step 3: Initialize Terraform in the terraform directory
-      # This downloads the required AWS provider and sets up the backend.
-      - name: "🔧 Terraform Init"
-        run: terraform init
-        working-directory: ${{ env.TF_DIR }} # Runs the command in the ./terraform folder
-
-      # Step 4: Apply the Terraform configuration to CREATE the EC2 instance
-      # The -auto-approve flag means "yes" to any prompts, making it fully automated.
-      - name: "✅ Terraform Apply"
-        run: terraform apply -auto-approve
-        working-directory: ${{ env.TF_DIR }}
-        env: # Set environment variables for this specific step
-          # These secrets are stored in GitHub and are injected here securely
+      # Step 3: See what Terraform will create (good for validation)
+      - name: 📋 Terraform Plan
+        run: terraform plan
+        working-directory: ./terraform
+        env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # Step 5: Capture the public IP output from Terraform and save it for the next job
-      - name: "📝 Get Server IP from Terraform"
-        id: terraform-output
+      # Step 4: Create the AWS infrastructure (EC2 instance, security group, etc.)
+      - name: ✅ Terraform Apply
+        run: terraform apply -auto-approve
+        working-directory: ./terraform
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      # Step 5: Get the server's public IP address from Terraform output
+      - name: 📝 Get IP Address
+        id: get-ip
         run: |
-          # Simple fix: Try 3 times with delays to handle temporary issues
-          sleep 10  # Wait a bit for network to stabilize
-          IP=$(terraform output -raw public_ip | head -n 1)
-          echo "public_ip=$IP" >> $GITHUB_OUTPUT
-        working-directory: ${{ env.TF_DIR }}
+          # Wait a moment for Terraform output to be available
+          sleep 10
+          # Extract the public IP address from Terraform output
+          IP=$(terraform output -raw public_ip)
+          # Store the IP in an environment variable for the next step
+          echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
+          echo "Server IP: $IP"
+        working-directory: ./terraform
 
-    # This allows us to pass the server_ip from this job to the next job
-    outputs:
-      server_ip: ${{ steps.terraform-output.outputs.public_ip }}
-
-  # JOB 2: This job uses Ansible to configure the server and deploy the app
-  # It depends on the first job. It will only run if the terraform job succeeds.
-  ansible-deploy:
-    name: "🎯 Ansible - Deploy Application"
-    runs-on: ubuntu-latest
-    needs: terraform-apply # This is the dependency. Wait for the terraform job to finish.
-    environment: production
-
-    steps:
-      - name: "📦 Checkout code"
-        uses: actions/checkout@v4
-
-      # Step 1: Set up SSH to allow Ansible to connect to the new EC2 server
-      - name: "🔑 Configure SSH"
+      # Step 6: Deploy the application using Ansible
+      - name: 🚀 Deploy with Ansible
         run: |
+          # Create SSH directory and set up the private key
           mkdir -p ~/.ssh/
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/private_key.pem
-          chmod 600 ~/.ssh/private_key.pem
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key.pem
+          chmod 600 ~/.ssh/deploy_key.pem
           
-          # Use the IP passed from the previous job
-          ssh-keyscan -H ${{ needs.terraform-apply.outputs.server_ip }} >> ~/.ssh/known_hosts
-
-      # Step 2: Run the Ansible playbook to install Docker and deploy the app
-      - name: "⚡ Run Ansible Playbook"
-        run: |
-          # Create a temporary inventory file on the fly, using the IP from the terraform job
-          echo "[monitor_servers]" > ${{ env.ANSIBLE_DIR }}/inventory.ini
-          echo "${{ needs.terraform-apply.outputs.server_ip }} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/private_key.pem" >> ${{ env.ANSIBLE_DIR }}/inventory.ini
-          # Finally, run the playbook to configure the server!
-          ansible-playbook -i ${{ env.ANSIBLE_DIR }}/inventory.ini ${{ env.ANSIBLE_DIR }}/playbook.yml
+          # Add the server to known_hosts to avoid manual confirmation
+          ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts
+          
+          # Run Ansible to install Docker and deploy the application
+          ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml --private-key=~/.ssh/deploy_key.pem -u ubuntu
+          
+          # Display success message with URLs
+          echo "🎉 Deployment complete!"
+          echo "🌐 WordPress available at: http://$IP_ADDRESS"
+          echo "📊 Grafana available at: http://$IP_ADDRESS/grafana"
