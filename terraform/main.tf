@@ -7,11 +7,20 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 
 provider "aws" {
   region = "eu-west-2"
+}
+
+# Create random suffix for unique names
+resource "random_id" "suffix" {
+  byte_length = 4
 }
 
 # Use the EXISTING VPC that you already have
@@ -26,8 +35,8 @@ data "aws_subnet" "existing_subnet" {
 
 # Create the Security Group INSIDE the existing VPC
 resource "aws_security_group" "monitor_sg" {
-  name        = "monitor-sg123"
-  description = "Allow HTTP and SSH traffic"
+  name        = "monitor-sg-${random_id.suffix.hex}"
+  description = "Security group for monitor servers"
   vpc_id      = data.aws_vpc.existing_vpc.id # Use the existing VPC
 
   ingress {
@@ -76,4 +85,3 @@ output "public_ip" {
   description = "Public IP of the EC2 instance"
   value       = aws_instance.monitor_server.public_ip
 }
-
