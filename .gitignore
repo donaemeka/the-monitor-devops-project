@@ -19,4 +19,4 @@ crash.log
 
 # Ignore CLI configuration files
 .terraformrc
-terraform.rc
+terraform.rcansible/inventory.ini
