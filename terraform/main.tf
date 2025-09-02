@@ -64,7 +64,7 @@ resource "aws_instance" "monitor_server" {
 
   subnet_id                   = data.aws_subnet.existing_subnet.id # Use existing subnet
   vpc_security_group_ids      = [aws_security_group.monitor_sg.id]
-  associate_public_ip_address = true # This should work since you have an Internet Gateway
+  associate_public_ip_address = true 
 
   tags = {
     Name = "Monitor-Server"
@@ -75,5 +75,5 @@ resource "aws_instance" "monitor_server" {
 output "public_ip" {
   description = "Public IP of the EC2 instance"
   value       = aws_instance.monitor_server.public_ip
-}#  Mon Sep 1 22:25:07 CEST 2025
-# Security group name updated to avoid conflicts
+}
+
