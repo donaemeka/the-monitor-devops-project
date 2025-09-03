@@ -32,6 +32,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-west-2
 
       # Step 4: Terraform Plan
       - name: 📋 Terraform Plan
@@ -41,6 +42,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-west-2
 
       # Step 5: Terraform Apply
       - name: ✅ Terraform Apply
@@ -50,8 +52,9 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-west-2
 
-      # Step 6: Get EC2 public IP (RELIABLE VERSION)
+      # Step 6: Get EC2 public IP
       - name: 📝 Get IP Address
         id: get-ip
         run: |
@@ -67,12 +70,6 @@ jobs:
             IP=$(grep -o '"public_ip": "[^"]*' terraform.tfstate | cut -d'"' -f4 | head -1)
           fi
           
-          # Method 3: Last resort - check JSON output
-          if [ -z "$IP" ]; then
-            echo "State file extraction failed, trying JSON output..."
-            IP=$(terraform show -json | jq -r '.values.outputs.public_ip.value' 2>/dev/null || echo "")
-          fi
-          
           # Final check
           if [ -z "$IP" ]; then
             echo "❌ ERROR: Could not retrieve IP address"
@@ -81,6 +78,10 @@ jobs:
           
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "✅ Server IP: $IP"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-west-2
 
       # Step 7: Deploy with Ansible
       - name: 🚀 Deploy with Ansible
