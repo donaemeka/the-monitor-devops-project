@@ -21,32 +21,23 @@ jobs:
         with:
           terraform_version: "1.5.0"
 
-      # Step 3: Terraform Init (FIXED)
+      # Step 3: Terraform Init (with backend)
       - name: 🔧 Terraform Init
-        run: |
-          cd terraform
-          terraform init \
-            -backend-config="bucket=my-new-terraform-bucket" \
-            -backend-config="region=eu-west-2" \
-            -backend-config="key=monitor-project/terraform.tfstate"
+        run: terraform -chdir=./terraform init -backend-config="bucket=my-new-terraform-bucket" -backend-config="region=eu-west-2" -backend-config="key=monitor-project/terraform.tfstate"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       # Step 4: Terraform Plan
       - name: 📋 Terraform Plan
-        run: |
-          cd terraform
-          terraform plan
+        run: terraform -chdir=./terraform plan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       # Step 5: Terraform Apply
       - name: ✅ Terraform Apply
-        run: |
-          cd terraform
-          terraform apply -auto-approve
+        run: terraform -chdir=./terraform apply -auto-approve
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -55,9 +46,9 @@ jobs:
       - name: 📝 Get IP Address
         id: get-ip
         run: |
-          cd terraform
-          sleep 15
-          IP=$(terraform output -raw public_ip)
+          # Wait to ensure EC2 is ready
+          sleep 20
+          IP=$(terraform -chdir=./terraform output -raw public_ip)
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "Server IP: $IP"
 
@@ -68,13 +59,16 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/monitor.pem
           chmod 600 ~/.ssh/monitor.pem
 
-          # Add the server to known_hosts
+          # Add the server to known_hosts to avoid SSH confirmation prompts
           ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts || true
+          
+          # Short wait to ensure SSH is ready
           sleep 10
 
-          # Run Ansible to install Docker and deploy app
-          ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml --private-key=~/.ssh/monitor.pem -u ubuntu
-
+          # Run Ansible playbook
+          ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml \
+                           --private-key=~/.ssh/monitor.pem -u ubuntu
+          
           echo "🎉 Deployment complete!"
           echo "🌐 WordPress available at: http://$IP_ADDRESS"
           echo "📊 Grafana available at: http://$IP_ADDRESS/grafana"
