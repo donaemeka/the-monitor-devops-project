@@ -8,14 +8,15 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
+
     steps:
-      # Step 1: Checkout the repo
+      # Step 1: Checkout repository
       - name: 📦 Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Step 2: Setup Terraform
+      # Step 2: Install Terraform
       - name: 🛠️ Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
@@ -46,7 +47,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       # Step 6: Get EC2 public IP
-      - name: 📝 Get IP Address
+      - name: 📝 Get EC2 Public IP
         id: get-ip
         run: |
           sleep 15
@@ -54,19 +55,21 @@ jobs:
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "Server IP: $IP"
 
-      # Step 7: Deploy with Ansible
+      # Step 7: Deploy application with Ansible
       - name: 🚀 Deploy with Ansible
         run: |
+          # Prepare SSH
           mkdir -p ~/.ssh/
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/monitor.pem
           chmod 600 ~/.ssh/monitor.pem
-
           ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts || true
           sleep 10
 
+          # Run Ansible playbook
           ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml \
                            --private-key=~/.ssh/monitor.pem -u ubuntu
-          
+
+          # Success messages
           echo "🎉 Deployment complete!"
           echo "🌐 WordPress available at: http://$IP_ADDRESS"
           echo "📊 Grafana available at: http://$IP_ADDRESS/grafana"
