@@ -51,15 +51,36 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # Step 6: Get EC2 public IP (FIXED)
+      # Step 6: Get EC2 public IP (RELIABLE VERSION)
       - name: 📝 Get IP Address
         id: get-ip
         run: |
           cd terraform
           sleep 15
-          IP=$(terraform output -raw public_ip)
+          
+          # Method 1: Try terraform output first
+          IP=$(terraform output -raw public_ip 2>/dev/null || echo "")
+          
+          # Method 2: If that fails, extract from state file
+          if [ -z "$IP" ]; then
+            echo "Terraform output failed, extracting from state file..."
+            IP=$(grep -o '"public_ip": "[^"]*' terraform.tfstate | cut -d'"' -f4 | head -1)
+          fi
+          
+          # Method 3: Last resort - check JSON output
+          if [ -z "$IP" ]; then
+            echo "State file extraction failed, trying JSON output..."
+            IP=$(terraform show -json | jq -r '.values.outputs.public_ip.value' 2>/dev/null || echo "")
+          fi
+          
+          # Final check
+          if [ -z "$IP" ]; then
+            echo "❌ ERROR: Could not retrieve IP address"
+            exit 1
+          fi
+          
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
-          echo "Server IP: $IP"
+          echo "✅ Server IP: $IP"
 
       # Step 7: Deploy with Ansible
       - name: 🚀 Deploy with Ansible
@@ -69,7 +90,7 @@ jobs:
           chmod 600 ~/.ssh/monitor.pem
 
           # Add the server to known_hosts
-          ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts || true
+          ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts 2>/dev/null || true
           sleep 10
 
           # Run Ansible to install Docker and deploy app
