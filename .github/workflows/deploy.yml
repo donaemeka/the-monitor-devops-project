@@ -23,7 +23,10 @@ jobs:
 
       # Step 3: Terraform Init (with backend)
       - name: 🔧 Terraform Init
-        run: terraform -chdir=./terraform init -backend-config="bucket=my-new-terraform-bucket" -backend-config="region=eu-west-2" -backend-config="key=monitor-project/terraform.tfstate"
+        run: terraform -chdir=./terraform init \
+              -backend-config="bucket=my-new-terraform-bucket" \
+              -backend-config="region=eu-west-2" \
+              -backend-config="key=monitor-project/terraform.tfstate"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -46,9 +49,13 @@ jobs:
       - name: 📝 Get IP Address
         id: get-ip
         run: |
-          # Wait to ensure EC2 is ready
+          # Wait to ensure EC2 is fully ready
           sleep 20
+
+          # Get the public IP from Terraform
           IP=$(terraform -chdir=./terraform output -raw public_ip)
+
+          # Export to GitHub environment
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "Server IP: $IP"
 
@@ -59,16 +66,15 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/monitor.pem
           chmod 600 ~/.ssh/monitor.pem
 
-          # Add the server to known_hosts to avoid SSH confirmation prompts
+          # Add server to known_hosts to avoid manual confirmation
           ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts || true
-          
-          # Short wait to ensure SSH is ready
           sleep 10
 
-          # Run Ansible playbook
+          # Run Ansible playbook to install Docker and deploy the app
           ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml \
                            --private-key=~/.ssh/monitor.pem -u ubuntu
-          
+
+          # Display deployment URLs
           echo "🎉 Deployment complete!"
           echo "🌐 WordPress available at: http://$IP_ADDRESS"
           echo "📊 Grafana available at: http://$IP_ADDRESS/grafana"
