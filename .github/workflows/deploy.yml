@@ -23,27 +23,24 @@ jobs:
 
       # Step 3: Terraform Init (with backend)
       - name: 🔧 Terraform Init
-        run: terraform init \
+        run: terraform -chdir=./terraform init \
               -backend-config="bucket=my-new-terraform-bucket" \
               -backend-config="region=eu-west-2" \
               -backend-config="key=monitor-project/terraform.tfstate"
-        working-directory: ./terraform
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       # Step 4: Terraform Plan
       - name: 📋 Terraform Plan
-        run: terraform plan
-        working-directory: ./terraform
+        run: terraform -chdir=./terraform plan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       # Step 5: Terraform Apply
       - name: ✅ Terraform Apply
-        run: terraform apply -auto-approve
-        working-directory: ./terraform
+        run: terraform -chdir=./terraform apply -auto-approve
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -53,10 +50,9 @@ jobs:
         id: get-ip
         run: |
           sleep 15
-          IP=$(terraform output -raw public_ip)
+          IP=$(terraform -chdir=./terraform output -raw public_ip)
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "Server IP: $IP"
-        working-directory: ./terraform
 
       # Step 7: Deploy with Ansible
       - name: 🚀 Deploy with Ansible
