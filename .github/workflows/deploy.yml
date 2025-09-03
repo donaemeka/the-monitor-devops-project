@@ -63,8 +63,6 @@ jobs:
            # Clean method: Get IP and remove any debug output
           IP=$(terraform output -raw public_ip 2>&1 | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1)
           
-          # Method 1: Try terraform output first
-          IP=$(terraform output -raw public_ip 2>/dev/null || echo "")
           
           # Method 2: If that fails, extract from state file
           if [ -z "$IP" ]; then
