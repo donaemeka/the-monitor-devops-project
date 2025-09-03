@@ -1,16 +1,16 @@
 ---
 - name: Configure Ubuntu Server for The Monitor
-  hosts: all  # Run on all servers in our list
-  become: yes # Run commands with sudo
+  hosts: all
+  become: yes
 
   tasks:
-    # Update the list of available software
-    - name: Update apt package cache
+    # Update packages
+    - name: Update apt cache
       apt:
         update_cache: yes
 
-    # Install tools needed to install Docker
-    - name: Install required system packages
+    # Install required packages for Docker
+    - name: Install dependencies
       apt:
         name:
           - apt-transport-https
@@ -19,19 +19,19 @@
           - software-properties-common
         state: present
 
-    # Add Docker's official GPG key (for security)
+    # Add Docker GPG key
     - name: Add Docker GPG key
       apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
 
-    # Add Docker's repository to our software sources list
+    # Add Docker repository
     - name: Add Docker repository
       apt_repository:
         repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable
         state: present
 
-    # Install Docker itself
+    # Install Docker & Docker CLI
     - name: Install Docker
       apt:
         name:
@@ -41,21 +41,21 @@
         state: present
         update_cache: yes
 
-    # Download and install Docker Compose
+    # Install Docker Compose
     - name: Install Docker Compose
       get_url:
         url: https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-linux-x86_64
         dest: /usr/local/bin/docker-compose
-        mode: '0755' # Make the file executable
+        mode: '0755'
 
-    # Create a folder for our application
+    # Create app folder
     - name: Create application directory
       file:
         path: /opt/the-monitor
         state: directory
         mode: '0755'
 
-    # Copy our configuration files to the server
+    # Copy config files from repo to server
     - name: Copy Docker Compose file
       copy:
         src: "../docker-compose.yml"
@@ -71,14 +71,14 @@
         src: "../prometheus.yml"
         dest: "/opt/the-monitor/prometheus.yml"
 
-    # THE MOST IMPORTANT COMMAND: Start all the containers!
-    - name: Start the application stack with Docker Compose
+    # Start Docker Compose stack
+    - name: Start Docker Compose stack
       community.docker.docker_compose_v2:
         project_src: /opt/the-monitor
         state: present
 
-    # Ensure Docker starts automatically if the server reboots
-    - name: Ensure Docker service is running and enabled
+    # Ensure Docker runs on reboot
+    - name: Ensure Docker service is enabled
       systemd:
         name: docker
         state: started
