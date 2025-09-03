@@ -21,41 +21,43 @@ jobs:
         with:
           terraform_version: "1.5.0"
 
-      # Step 3: Terraform Init (with backend)
+      # Step 3: Terraform Init
       - name: 🔧 Terraform Init
-        run: terraform -chdir=./terraform init \
-              -backend-config="bucket=my-new-terraform-bucket" \
-              -backend-config="region=eu-west-2" \
-              -backend-config="key=monitor-project/terraform.tfstate"
+        run: |
+          cd terraform
+          terraform init \
+            -backend-config="bucket=my-new-terraform-bucket" \
+            -backend-config="region=eu-west-2" \
+            -backend-config="key=monitor-project/terraform.tfstate"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       # Step 4: Terraform Plan
       - name: 📋 Terraform Plan
-        run: terraform -chdir=./terraform plan
+        run: |
+          cd terraform
+          terraform plan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       # Step 5: Terraform Apply
       - name: ✅ Terraform Apply
-        run: terraform -chdir=./terraform apply -auto-approve
+        run: |
+          cd terraform
+          terraform apply -auto-approve
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # Step 6: Get EC2 public IP
+      # Step 6: Get EC2 public IP (FIXED)
       - name: 📝 Get IP Address
         id: get-ip
         run: |
-          # Wait to ensure EC2 is fully ready
-          sleep 20
-
-          # Get the public IP from Terraform
-          IP=$(terraform -chdir=./terraform output -raw public_ip)
-
-          # Export to GitHub environment
+          cd terraform
+          sleep 15
+          IP=$(terraform output -raw public_ip)
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "Server IP: $IP"
 
@@ -66,15 +68,13 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/monitor.pem
           chmod 600 ~/.ssh/monitor.pem
 
-          # Add server to known_hosts to avoid manual confirmation
+          # Add the server to known_hosts
           ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts || true
           sleep 10
 
-          # Run Ansible playbook to install Docker and deploy the app
-          ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml \
-                           --private-key=~/.ssh/monitor.pem -u ubuntu
+          # Run Ansible to install Docker and deploy app
+          ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml --private-key=~/.ssh/monitor.pem -u ubuntu
 
-          # Display deployment URLs
           echo "🎉 Deployment complete!"
           echo "🌐 WordPress available at: http://$IP_ADDRESS"
           echo "📊 Grafana available at: http://$IP_ADDRESS/grafana"
