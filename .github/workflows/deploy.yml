@@ -9,7 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-
       # Step 1: Checkout the repo
       - name: 📦 Checkout code
         uses: actions/checkout@v4
@@ -22,23 +21,32 @@ jobs:
         with:
           terraform_version: "1.5.0"
 
-      # Step 3: Terraform Init (with backend)
+      # Step 3: Terraform Init (FIXED)
       - name: 🔧 Terraform Init
-        run: terraform -chdir=./terraform init -backend-config="bucket=my-new-terraform-bucket" -backend-config="region=eu-west-2" -backend-config="key=monitor-project/terraform.tfstate"
+        run: |
+          cd terraform
+          terraform init \
+            -backend-config="bucket=my-new-terraform-bucket" \
+            -backend-config="region=eu-west-2" \
+            -backend-config="key=monitor-project/terraform.tfstate"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       # Step 4: Terraform Plan
       - name: 📋 Terraform Plan
-        run: terraform -chdir=./terraform plan
+        run: |
+          cd terraform
+          terraform plan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       # Step 5: Terraform Apply
       - name: ✅ Terraform Apply
-        run: terraform -chdir=./terraform apply -auto-approve
+        run: |
+          cd terraform
+          terraform apply -auto-approve
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -47,8 +55,9 @@ jobs:
       - name: 📝 Get IP Address
         id: get-ip
         run: |
+          cd terraform
           sleep 15
-          IP=$(terraform -chdir=./terraform output -raw public_ip)
+          IP=$(terraform output -raw public_ip)
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "Server IP: $IP"
 
