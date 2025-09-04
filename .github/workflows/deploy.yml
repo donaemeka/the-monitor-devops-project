@@ -22,34 +22,49 @@ jobs:
         with:
           terraform_version: "1.5.0"
 
-      # Step 3: Terraform Init
+      # Step 3: Setup Ansible
+      - name: 🛠️ Setup Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible sshpass
+
+      # Step 4: Terraform Init - CORRECTION: Multi-line syntax
       - name: 🔧 Terraform Init
-        run: terraform -chdir=terraform init \
-              -backend-config="bucket=my-new-terraform-bucket" \
-              -backend-config="region=eu-west-2" \
-              -backend-config="key=monitor-project/terraform.tfstate"
+        run: |
+          terraform -chdir=terraform init \
+            -backend-config="bucket=my-new-terraform-bucket" \
+            -backend-config="region=eu-west-2" \
+            -backend-config="key=monitor-project/terraform.tfstate"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: eu-west-2
 
-      # Step 4: Terraform Plan
+      # Step 5: Terraform Validate - ADDED: Validation step
+      - name: 🔍 Terraform Validate
+        run: terraform -chdir=terraform validate
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-west-2
+
+      # Step 6: Terraform Plan
       - name: 📋 Terraform Plan
-        run: terraform -chdir=terraform plan -var-file="terraform.tfvars"
+        run: terraform -chdir=terraform plan -var-file="terraform.tfvars" -out=tfplan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: eu-west-2
 
-      # Step 5: Terraform Apply
+      # Step 7: Terraform Apply - CORRECTION: Use plan file
       - name: ✅ Terraform Apply
-        run: terraform -chdir=terraform apply -var-file="terraform.tfvars" -auto-approve
+        run: terraform -chdir=terraform apply -auto-approve tfplan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: eu-west-2
 
-      # Step 6: Get EC2 Elastic IP
+      # Step 8: Get EC2 Elastic IP
       - name: 📝 Get Server IP
         id: get-ip
         run: |
@@ -61,23 +76,56 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: eu-west-2
 
-      # Step 7: Deploy with Ansible
+      # Step 9: Wait for SSH Availability - ADDED: Connection readiness check
+      - name: ⏳ Wait for SSH
+        run: |
+          echo "Waiting for SSH to be available on $IP_ADDRESS..."
+          for i in {1..30}; do
+            if nc -z -w 5 $IP_ADDRESS 22; then
+              echo "SSH is available!"
+              exit 0
+            fi
+            echo "Attempt $i/30: SSH not ready yet..."
+            sleep 10
+          done
+          echo "SSH failed to become available in time"
+          exit 1
+        env:
+          IP_ADDRESS: ${{ env.IP_ADDRESS }}
+
+      # Step 10: Deploy with Ansible - IMPROVED: Better error handling
       - name: 🚀 Deploy with Ansible
         run: |
           mkdir -p ~/.ssh/
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/monitor.pem
           chmod 600 ~/.ssh/monitor.pem
 
-          # Add server to known_hosts
-          ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts 2>/dev/null || true
-          sleep 5
+          # Add server to known_hosts without strict host key checking
+          ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts
 
-          # Run Ansible playbook
+          # Test SSH connection first
+          echo "Testing SSH connection..."
+          ssh -i ~/.ssh/monitor.pem -o ConnectTimeout=10 -o BatchMode=yes ubuntu@$IP_ADDRESS exit
+
+          # Run Ansible playbook with verbose output and error handling
+          echo "Running Ansible playbook..."
           ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml \
-            --private-key=~/.ssh/monitor.pem -u ubuntu
+            --private-key=~/.ssh/monitor.pem \
+            -u ubuntu \
+            -v \
+            --timeout=30 \
+            --retry 2
 
           echo "🎉 Deployment complete!"
           echo "🌐 WordPress: http://$IP_ADDRESS"
           echo "📊 Grafana: http://$IP_ADDRESS/grafana"
         env:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
+
+      # Step 11: Cleanup Plan File - ADDED: Cleanup step
+      - name: 🧹 Cleanup
+        if: always()
+        run: rm -f terraform/tfplan
+
+    # ADDED: Failure notification and always-run steps
+    timeout-minutes: 30
