@@ -8,22 +8,18 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.0"
-    }
+  }
+
+  backend "s3" {
+    bucket         = "my-new-terraform-bucket"
+    key            = "monitor-project/terraform.tfstate"
+    region         = "eu-west-2"
+    encrypt        = true
   }
 }
 
 provider "aws" {
   region = "eu-west-2"
-}
-
-# ------------------------------------------------------------
-# Random suffix for unique names
-# ------------------------------------------------------------
-resource "random_id" "suffix" {
-  byte_length = 4
 }
 
 # ------------------------------------------------------------
@@ -38,10 +34,10 @@ data "aws_subnet" "existing_subnet" {
 }
 
 # ------------------------------------------------------------
-# Security Group - IMPROVED: Added more ports for monitoring stack
+# Security Group - FIXED: Removed random suffix
 # ------------------------------------------------------------
 resource "aws_security_group" "monitor_sg" {
-  name        = "monitor-sg-${random_id.suffix.hex}"
+  name        = "monitor-sg"  # REMOVED: -${random_id.suffix.hex}
   description = "Security group for Monitor servers"
   vpc_id      = data.aws_vpc.existing_vpc.id
 
@@ -96,10 +92,15 @@ resource "aws_security_group" "monitor_sg" {
   tags = {
     Name = "Monitor-SG"
   }
+
+  # ADDED: Lifecycle to prevent recreation
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # ------------------------------------------------------------
-# EC2 Instance
+# EC2 Instance - FIXED: Consistent naming
 # ------------------------------------------------------------
 resource "aws_instance" "monitor_server" {
   ami           = var.ami_id
@@ -113,10 +114,9 @@ resource "aws_instance" "monitor_server" {
   root_block_device {
     volume_size = var.root_volume_size
     volume_type = var.root_volume_type
-    encrypted   = true # ADDED: Encryption for security
+    encrypted   = true
   }
 
-  # ADDED: User data for basic setup
   user_data = <<-EOF
               #!/bin/bash
               apt-get update
@@ -124,18 +124,29 @@ resource "aws_instance" "monitor_server" {
               EOF
 
   tags = {
-    Name = "Monitor-Server-${random_id.suffix.hex}"
+    Name = "Monitor-Server"  # REMOVED: -${random_id.suffix.hex}
+  }
+
+  # ADDED: Lifecycle to prevent recreation
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes = [ami]  # Don't recreate if AMI changes
   }
 }
 
 # ------------------------------------------------------------
-# Elastic IP
+# Elastic IP - FIXED: Consistent naming
 # ------------------------------------------------------------
 resource "aws_eip" "monitor_eip" {
   vpc = true
   
   tags = {
-    Name = "Monitor-EIP-${random_id.suffix.hex}"
+    Name = "Monitor-EIP"  # REMOVED: -${random_id.suffix.hex}
+  }
+
+  # ADDED: Lifecycle to prevent recreation
+  lifecycle {
+    prevent_destroy = true  # Don't destroy/recreate EIP
   }
 }
 
@@ -145,7 +156,7 @@ resource "aws_eip_association" "monitor_eip_assoc" {
 }
 
 # ------------------------------------------------------------
-# Outputs - ADDED: More useful outputs
+# Outputs
 # ------------------------------------------------------------
 output "public_ip" {
   description = "Elastic IP of the EC2 instance"
