@@ -1,4 +1,4 @@
-name: 🚀 Simple Deploy
+name: 🚀 Deploy The Monitor Project
 
 on:
   push:
@@ -7,59 +7,66 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       # Step 1: Checkout repo
       - name: 📦 Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Step 2: Setup Terraform
-      - name: 🛠 Setup Terraform
+      - name: 🛠️ Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: "1.5.0"
 
       # Step 3: Terraform Init
       - name: 🔧 Terraform Init
-        run: |
-          cd terraform
-          terraform init \
-            -backend-config="bucket=my-new-terraform-bucket" \
-            -backend-config="region=eu-west-2" \
-            -backend-config="key=monitor-project/terraform.tfstate"
+        run: terraform init \
+              -backend-config="bucket=my-new-terraform-bucket" \
+              -backend-config="region=eu-west-2" \
+              -backend-config="key=monitor-project/terraform.tfstate"
+        working-directory: terraform
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-west-2
 
       # Step 4: Terraform Plan
       - name: 📋 Terraform Plan
-        run: |
-          cd terraform
-          terraform plan -var-file="terraform.tfvars"
+        run: terraform plan -var-file="terraform.tfvars"
+        working-directory: terraform
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-west-2
 
       # Step 5: Terraform Apply
       - name: ✅ Terraform Apply
-        run: |
-          cd terraform
-          terraform apply -var-file="terraform.tfvars" -auto-approve
+        run: terraform apply -var-file="terraform.tfvars" -auto-approve
+        working-directory: terraform
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-west-2
 
-      # Step 6: Get Elastic IP
+      # Step 6: Get EC2 Elastic IP
       - name: 📝 Get Server IP
         id: get-ip
         run: |
-          cd terraform
           IP=$(terraform output -raw public_ip)
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "✅ Server IP: $IP"
+        working-directory: terraform
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: eu-west-2
 
-      # Step 7: Deploy App with Ansible
-      - name: 🚀 Deploy App
+      # Step 7: Deploy with Ansible
+      - name: 🚀 Deploy with Ansible
         run: |
           mkdir -p ~/.ssh/
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/monitor.pem
@@ -67,11 +74,14 @@ jobs:
 
           # Add server to known_hosts
           ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts 2>/dev/null || true
+          sleep 5
 
           # Run Ansible playbook
           ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml \
-            --private-key ~/.ssh/monitor.pem -u ubuntu
+            --private-key=~/.ssh/monitor.pem -u ubuntu
 
           echo "🎉 Deployment complete!"
           echo "🌐 WordPress: http://$IP_ADDRESS"
           echo "📊 Grafana: http://$IP_ADDRESS/grafana"
+        env:
+          IP_ADDRESS: ${{ env.IP_ADDRESS }}
