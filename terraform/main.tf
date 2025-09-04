@@ -74,7 +74,12 @@ resource "aws_instance" "monitor_server" {
   subnet_id                   = data.aws_subnet.existing_subnet.id # Use existing subnet
   vpc_security_group_ids      = [aws_security_group.monitor_sg.id]
   associate_public_ip_address = true 
-
+  
+   root_block_device {
+    volume_size = 20     # 20GB disk
+    volume_type = "gp3"  # General Purpose SSD
+  }
+  
   tags = {
     Name = "Monitor-Server"
   }
