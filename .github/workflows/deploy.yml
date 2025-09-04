@@ -78,15 +78,19 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: eu-west-2
 
-      # Step 9: Get EC2 Elastic IP
+      # Step 9: Get EC2 Elastic IP - CORRECTED VERSION
       - name: 📝 Get Server IP
         id: get-ip
         run: |
-          IP=$(terraform -chdir=terraform output -raw public_ip 2>/dev/null | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
+          # Get the raw output and extract only the IP address
+          RAW_OUTPUT=$(terraform -chdir=terraform output -raw public_ip)
+          IP=$(echo "$RAW_OUTPUT" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n1)
+          
           if [ -z "$IP" ]; then
-            echo "❌ ERROR: Could not extract public IP"
+            echo "❌ ERROR: Could not extract IP address from: '$RAW_OUTPUT'"
             exit 1
           fi
+          
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "✅ Server IP: $IP"
         env:
