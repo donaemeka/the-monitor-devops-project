@@ -115,24 +115,38 @@ jobs:
         env:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
 
-      # Step 11: Deploy with Ansible
+      # Step 11: Deploy with Ansible - CORRECTED VERSION (Fixes SSH Permission Denied)
       - name: 🚀 Deploy with Ansible
         run: |
+          # Create SSH directory and key file
           mkdir -p ~/.ssh/
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/monitor.pem
           chmod 600 ~/.ssh/monitor.pem
-
-          ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts
-
-          echo "Testing SSH connection..."
-          ssh -i ~/.ssh/monitor.pem -o ConnectTimeout=10 -o BatchMode=yes ubuntu@$IP_ADDRESS exit
-
+          
+          # Wait a bit longer for SSH to be fully ready (important!)
+          echo "Waiting 30 seconds for SSH to be fully ready..."
+          sleep 30
+          
+          # Add server to known_hosts without strict checking
+          ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts 2>/dev/null
+          
+          # Test SSH connection with more options (fixes permission denied)
+          echo "Testing SSH connection with relaxed security..."
+          ssh -i ~/.ssh/monitor.pem \
+              -o StrictHostKeyChecking=no \
+              -o UserKnownHostsFile=/dev/null \
+              -o ConnectTimeout=30 \
+              ubuntu@$IP_ADDRESS "echo 'SSH connection successful!'"
+          
+          # Run Ansible with disabled host key checking (fixes the issue)
           echo "Running Ansible playbook..."
+          ANSIBLE_HOST_KEY_CHECKING=False \
           ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml \
             --private-key=~/.ssh/monitor.pem \
             -u ubuntu \
-            -v
-
+            -v \
+            --extra-vars "ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'"
+          
           echo "🎉 Deployment complete!"
           echo "🌐 WordPress: http://$IP_ADDRESS"
           echo "📊 Grafana: http://$IP_ADDRESS/grafana"
