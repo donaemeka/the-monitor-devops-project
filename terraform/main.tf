@@ -68,7 +68,7 @@ resource "aws_security_group" "monitor_sg" {
 # Create the EC2 instance in the EXISTING subnet
 resource "aws_instance" "monitor_server" {
   ami           = "ami-046c2381f11878233" # Ubuntu 22.04 LTS for eu-west-2
-  instance_type = "t2.micro"
+  instance_type = "t3.small"  # 2GB RAM instead of 1GB
   key_name      = "monitor-key" # Make sure this key exists in eu-west-2
 
   subnet_id                   = data.aws_subnet.existing_subnet.id # Use existing subnet
