@@ -1,5 +1,6 @@
-# Infrastructure for The Monitor DevOps Project
-# Using existing VPC: vpc-0280c538c474724ba
+# ============================================================
+# The Monitor DevOps Project - EC2 with Elastic IP
+# ============================================================
 
 terraform {
   required_providers {
@@ -18,28 +19,34 @@ provider "aws" {
   region = "eu-west-2"
 }
 
-# Create random suffix for unique names
+# ------------------------------------------------------------
+# Random suffix for unique names
+# ------------------------------------------------------------
 resource "random_id" "suffix" {
   byte_length = 4
 }
 
-# Use the EXISTING VPC that you already have
+# ------------------------------------------------------------
+# Use existing VPC and Subnet
+# ------------------------------------------------------------
 data "aws_vpc" "existing_vpc" {
-  id = "vpc-0280c538c474724ba" # Your existing VPC ID
+  id = var.vpc_id
 }
 
-# Use the EXISTING Subnet that you already have
 data "aws_subnet" "existing_subnet" {
-  id = "subnet-0955441f00fafb2e7" # You need to find the actual subnet ID from your VPC
+  id = var.subnet_id
 }
 
-# Create the Security Group INSIDE the existing VPC
+# ------------------------------------------------------------
+# Security Group
+# ------------------------------------------------------------
 resource "aws_security_group" "monitor_sg" {
   name        = "monitor-sg-${random_id.suffix.hex}"
-  description = "Security group for monitor servers"
-  vpc_id      = data.aws_vpc.existing_vpc.id # Use the existing VPC
+  description = "Security group for Monitor servers"
+  vpc_id      = data.aws_vpc.existing_vpc.id
 
   ingress {
+    description = "Allow HTTP"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -47,6 +54,7 @@ resource "aws_security_group" "monitor_sg" {
   }
 
   ingress {
+    description = "Allow SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -54,6 +62,7 @@ resource "aws_security_group" "monitor_sg" {
   }
 
   egress {
+    description = "Allow all outbound"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -65,28 +74,44 @@ resource "aws_security_group" "monitor_sg" {
   }
 }
 
-# Create the EC2 instance in the EXISTING subnet
+# ------------------------------------------------------------
+# EC2 Instance
+# ------------------------------------------------------------
 resource "aws_instance" "monitor_server" {
-  ami           = "ami-046c2381f11878233" # Ubuntu 22.04 LTS for eu-west-2
-  instance_type = "t3.small"  # 2GB RAM instead of 1GB
-  key_name      = "monitor-key" # Make sure this key exists in eu-west-2
+  ami           = var.ami_id
+  instance_type = var.instance_type
+  key_name      = var.key_name
 
-  subnet_id                   = data.aws_subnet.existing_subnet.id # Use existing subnet
-  vpc_security_group_ids      = [aws_security_group.monitor_sg.id]
-  associate_public_ip_address = true 
-  
-   root_block_device {
-    volume_size = 20     # 20GB disk
-    volume_type = "gp3"  # General Purpose SSD
+  subnet_id              = data.aws_subnet.existing_subnet.id
+  vpc_security_group_ids = [aws_security_group.monitor_sg.id]
+  associate_public_ip_address = false # We'll use Elastic IP
+
+  root_block_device {
+    volume_size = var.root_volume_size
+    volume_type = var.root_volume_type
   }
-  
+
   tags = {
     Name = "Monitor-Server"
   }
 }
 
-# Output the public IP address of the instance
+# ------------------------------------------------------------
+# Elastic IP
+# ------------------------------------------------------------
+resource "aws_eip" "monitor_eip" {
+  vpc = true
+}
+
+resource "aws_eip_association" "monitor_eip_assoc" {
+  instance_id   = aws_instance.monitor_server.id
+  allocation_id = aws_eip.monitor_eip.id
+}
+
+# ------------------------------------------------------------
+# Output
+# ------------------------------------------------------------
 output "public_ip" {
-  description = "Public IP of the EC2 instance"
-  value       = aws_instance.monitor_server.public_ip
+  description = "Elastic IP of the EC2 instance"
+  value       = aws_eip.monitor_eip.public_ip
 }

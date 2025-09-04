@@ -7,16 +7,14 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
+
     steps:
-      # Step 1: Checkout the repo
+      # Step 1: Checkout repo
       - name: 📦 Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       # Step 2: Setup Terraform
-      - name: 🛠️ Setup Terraform
+      - name: 🛠 Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: "1.5.0"
@@ -32,71 +30,48 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-west-2
 
       # Step 4: Terraform Plan
       - name: 📋 Terraform Plan
         run: |
           cd terraform
-          terraform plan
+          terraform plan -var-file="terraform.tfvars"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-west-2
 
       # Step 5: Terraform Apply
       - name: ✅ Terraform Apply
         run: |
           cd terraform
-          terraform apply -auto-approve
+          terraform apply -var-file="terraform.tfvars" -auto-approve
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-west-2
 
-      # Step 6: Get EC2 public IP
-      - name: 📝 Get IP Address
+      # Step 6: Get Elastic IP
+      - name: 📝 Get Server IP
         id: get-ip
         run: |
           cd terraform
-          sleep 15
-           # Clean method: Get IP and remove any debug output
-          IP=$(terraform output -raw public_ip 2>&1 | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-          
-          
-          # Method 2: If that fails, extract from state file
-          if [ -z "$IP" ]; then
-            echo "Terraform output failed, extracting from state file..."
-            IP=$(grep -o '"public_ip": "[^"]*' terraform.tfstate | cut -d'"' -f4 | head -1)
-          fi
-          
-          # Final check
-          if [ -z "$IP" ]; then
-            echo "❌ ERROR: Could not retrieve IP address"
-            exit 1
-          fi
-          
+          IP=$(terraform output -raw public_ip)
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "✅ Server IP: $IP"
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-west-2
 
-      # Step 7: Deploy with Ansible
-      - name: 🚀 Deploy with Ansible
+      # Step 7: Deploy App with Ansible
+      - name: 🚀 Deploy App
         run: |
           mkdir -p ~/.ssh/
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/monitor.pem
           chmod 600 ~/.ssh/monitor.pem
 
-          # Add the server to known_hosts
+          # Add server to known_hosts
           ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts 2>/dev/null || true
-          sleep 10
 
-          # Run Ansible to install Docker and deploy app
-          ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml --private-key=~/.ssh/monitor.pem -u ubuntu
+          # Run Ansible playbook
+          ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml \
+            --private-key ~/.ssh/monitor.pem -u ubuntu
 
           echo "🎉 Deployment complete!"
-          echo "🌐 WordPress available at: http://$IP_ADDRESS"
-          echo "📊 Grafana available at: http://$IP_ADDRESS/grafana"
+          echo "🌐 WordPress: http://$IP_ADDRESS"
+          echo "📊 Grafana: http://$IP_ADDRESS/grafana"
