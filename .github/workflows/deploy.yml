@@ -27,8 +27,8 @@ jobs:
         run: terraform init \
               -backend-config="bucket=my-new-terraform-bucket" \
               -backend-config="region=eu-west-2" \
-              -backend-config="key=monitor-project/terraform.tfstate"
-        working-directory: terraform
+              -backend-config="key=monitor-project/terraform.tfstate" \
+              -chdir=terraform
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -36,8 +36,7 @@ jobs:
 
       # Step 4: Terraform Plan
       - name: 📋 Terraform Plan
-        run: terraform plan -var-file="terraform.tfvars"
-        working-directory: terraform
+        run: terraform plan -var-file="terraform.tfvars" -chdir=terraform
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -45,8 +44,7 @@ jobs:
 
       # Step 5: Terraform Apply
       - name: ✅ Terraform Apply
-        run: terraform apply -var-file="terraform.tfvars" -auto-approve
-        working-directory: terraform
+        run: terraform apply -var-file="terraform.tfvars" -auto-approve -chdir=terraform
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -56,10 +54,9 @@ jobs:
       - name: 📝 Get Server IP
         id: get-ip
         run: |
-          IP=$(terraform output -raw public_ip)
+          IP=$(terraform output -raw public_ip -chdir=terraform)
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "✅ Server IP: $IP"
-        working-directory: terraform
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
