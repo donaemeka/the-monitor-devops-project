@@ -13,60 +13,10 @@ terraform {
       version = "~> 3.0"
     }
   }
-
-  # ADDED: Backend configuration for remote state
-  backend "s3" {
-    bucket         = "my-new-terraform-bucket"
-    key            = "monitor-project/terraform.tfstate"
-    region         = "eu-west-2"
-    encrypt        = true
-  }
 }
 
 provider "aws" {
   region = "eu-west-2"
-}
-
-# ------------------------------------------------------------
-# Variable Definitions - ADDED: All required variables
-# ------------------------------------------------------------
-variable "vpc_id" {
-  description = "The ID of the existing VPC"
-  type        = string
-}
-
-variable "subnet_id" {
-  description = "The ID of the existing subnet"
-  type        = string
-}
-
-variable "ami_id" {
-  description = "The AMI ID for the EC2 instance"
-  type        = string
-  default     = "ami-0d729d2846a86a9e7" # Ubuntu 22.04 LTS in eu-west-2
-}
-
-variable "instance_type" {
-  description = "The EC2 instance type"
-  type        = string
-  default     = "t3.medium"
-}
-
-variable "key_name" {
-  description = "The name of the existing EC2 key pair"
-  type        = string
-}
-
-variable "root_volume_size" {
-  description = "The size of the root volume in GB"
-  type        = number
-  default     = 20
-}
-
-variable "root_volume_type" {
-  description = "The type of the root volume"
-  type        = string
-  default     = "gp2"
 }
 
 # ------------------------------------------------------------
@@ -214,5 +164,5 @@ output "security_group_id" {
 
 output "ssh_connection" {
   description = "SSH connection command"
-  value       = "ssh -i monitor-key.pem ubuntu@${aws_eip.monitor_eip.public_ip}"
+  value       = "ssh -i your-key.pem ubuntu@${aws_eip.monitor_eip.public_ip}"
 }

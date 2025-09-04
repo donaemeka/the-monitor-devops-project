@@ -1,42 +1,39 @@
-# ============================================================
-# Variables for The Monitor DevOps Project
-# ============================================================
-
+# variables.tf
 variable "vpc_id" {
-  description = "Existing VPC ID"
+  description = "The ID of the existing VPC"
   type        = string
 }
 
 variable "subnet_id" {
-  description = "Existing Subnet ID"
+  description = "The ID of the existing subnet"
   type        = string
 }
 
 variable "ami_id" {
-  description = "AMI for EC2"
+  description = "The AMI ID for the EC2 instance"
   type        = string
-  default     = "ami-046c2381f11878233" # Ubuntu 22.04 LTS
+  default     = "ami-0d729d2846a86a9e7"
 }
 
 variable "instance_type" {
-  description = "EC2 instance type"
+  description = "The EC2 instance type"
   type        = string
-  default     = "t3.small"
+  default     = "t3.medium"
 }
 
 variable "key_name" {
-  description = "Existing SSH key in AWS"
+  description = "The name of the existing EC2 key pair"
   type        = string
 }
 
 variable "root_volume_size" {
-  description = "Root volume size (GB)"
+  description = "The size of the root volume in GB"
   type        = number
   default     = 20
 }
 
 variable "root_volume_type" {
-  description = "Root volume type"
+  description = "The type of the root volume"
   type        = string
-  default     = "gp3"
+  default     = "gp2"
 }
