@@ -46,7 +46,7 @@ jobs:
           NEW_BUCKET="terraform-state-426333731292-us-east-1"
           echo "Using bucket: $NEW_BUCKET"
           
-          # For us-east-1, use simple mb command (no LocationConstraint)
+          # For us-east-1, use simple mb command
           aws s3 mb s3://$NEW_BUCKET --region us-east-1 || echo "Bucket may already exist"
           
           # Enable versioning
@@ -103,9 +103,19 @@ jobs:
       - name: 📝 Get Server IP
         id: get-ip
         run: |
-          IP=$(terraform -chdir=terraform output -raw public_ip)
-          echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
-          echo "✅ Server IP: $IP"
+          # Get raw output and extract only the IP address
+          RAW_OUTPUT=$(terraform -chdir=terraform output -raw public_ip)
+          IP=$(echo "$RAW_OUTPUT" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n1)
+          
+          # Verify it's a valid IP address
+          if [[ $IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
+            echo "✅ Server IP: $IP"
+          else
+            echo "❌ ERROR: Invalid IP address format: '$IP'"
+            echo "Raw output was: '$RAW_OUTPUT'"
+            exit 1
+          fi
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
