@@ -53,7 +53,7 @@ jobs:
         run: |
           terraform -chdir=terraform init \
             -backend-config="bucket=my-new-terraform-bucket" \
-            -backend-config="region=us-east-1" \
+            -backend-config="region=eu-west-2" \
             -backend-config="key=monitor-project/terraform.tfstate"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
