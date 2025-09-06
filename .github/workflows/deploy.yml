@@ -28,77 +28,30 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ansible sshpass
 
-      # Step 4: CREATE terraform.tfvars file
+      # Step 4: Create terraform.tfvars
       - name: 📝 Create Terraform Variables File
         run: |
           mkdir -p terraform
           cat > terraform/terraform.tfvars << 'EOF'
           vpc_id    = "vpc-0280c538c474724ba"
           subnet_id = "subnet-0955441f00fafb2e7"
-          key_name  = "monitor-key"
+          key_name  = "donatus"
           EOF
-          echo "✅ Created terraform.tfvars:"
-          cat terraform/terraform.tfvars
+          echo "✅ terraform.tfvars created!"
 
-      # Step 5: Debug Key Pair - ADDED
-      - name: 🔍 Verify Key Pair Exists
+      # Step 5: Verify AWS Key Pair Exists
+      - name: 🔍 Verify Key Pair
         run: |
-          echo "=== Checking AWS Key Pairs ==="
-          aws ec2 describe-key-pairs --region eu-west-2 --query 'KeyPairs[].KeyName' --output table
-          
-          echo "=== Verifying monitor-key exists ==="
-          if aws ec2 describe-key-pairs --region eu-west-2 --key-names "monitor-key" 2>/dev/null; then
-            echo "✅ Key pair 'monitor-key' exists in AWS"
-          else
-            echo "❌ Key pair 'monitor-key' does NOT exist in AWS"
-            exit 1
-          fi
+          aws ec2 describe-key-pairs \
+            --region eu-west-2 \
+            --key-names "donatus"
+          echo "✅ Key pair 'donatus' exists!"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: eu-west-2
 
-      # Step 6: Debug SSH Key - ADDED
-      - name: 🔍 Debug SSH Key
-        run: |
-          mkdir -p ~/.ssh/
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/monitor.pem
-          chmod 600 ~/.ssh/monitor.pem
-          
-          echo "=== SSH Key Debug Information ==="
-          echo "File created: ~/.ssh/monitor.pem"
-          echo "File size: $(wc -c < ~/.ssh/monitor.pem) bytes"
-          echo "File permissions: $(ls -la ~/.ssh/monitor.pem)"
-          echo ""
-          echo "=== First 3 lines ==="
-          head -n 3 ~/.ssh/monitor.pem
-          echo ""
-          echo "=== Last 3 lines ==="
-          tail -n 3 ~/.ssh/monitor.pem
-          echo ""
-          
-          # Verify key format
-          if head -n 1 ~/.ssh/monitor.pem | grep -q "BEGIN.*PRIVATE KEY"; then
-            echo "✅ Key starts correctly with BEGIN PRIVATE KEY"
-          else
-            echo "❌ Key does NOT start with BEGIN PRIVATE KEY"
-            exit 1
-          fi
-          
-          if tail -n 1 ~/.ssh/monitor.pem | grep -q "END.*PRIVATE KEY"; then
-            echo "✅ Key ends correctly with END PRIVATE KEY"
-          else
-            echo "❌ Key does NOT end with END PRIVATE KEY"
-            exit 1
-          fi
-          
-          echo "✅ SSH key format is correct!"
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-west-2
-
-      # Step 7: Terraform Init
+      # Step 6: Terraform Init
       - name: 🔧 Terraform Init
         run: |
           terraform -chdir=terraform init \
@@ -110,15 +63,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: eu-west-2
 
-      # Step 8: Terraform Validate
-      - name: 🔍 Terraform Validate
-        run: terraform -chdir=terraform validate
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-west-2
-
-      # Step 9: Terraform Plan
+      # Step 7: Terraform Plan
       - name: 📋 Terraform Plan
         run: terraform -chdir=terraform plan -var-file="terraform.tfvars" -out=tfplan
         env:
@@ -126,7 +71,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: eu-west-2
 
-      # Step 10: Terraform Apply
+      # Step 8: Terraform Apply
       - name: ✅ Terraform Apply
         run: terraform -chdir=terraform apply -auto-approve tfplan
         env:
@@ -134,81 +79,50 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: eu-west-2
 
-      # Step 11: Get EC2 Elastic IP
+      # Step 9: Get EC2 IP
       - name: 📝 Get Server IP
         id: get-ip
         run: |
-          RAW_OUTPUT=$(terraform -chdir=terraform output -raw public_ip)
-          IP=$(echo "$RAW_OUTPUT" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n1)
-          
-          if [ -z "$IP" ]; then
-            echo "❌ ERROR: Could not extract IP address from: '$RAW_OUTPUT'"
-            exit 1
-          fi
-          
+          IP=$(terraform -chdir=terraform output -raw public_ip)
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "✅ Server IP: $IP"
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-west-2
 
-      # Step 12: Wait for SSH
+      # Step 10: Wait for SSH
       - name: ⏳ Wait for SSH
         run: |
-          echo "Waiting for SSH to be available on $IP_ADDRESS..."
-          for i in {1..30}; do
+          echo "Waiting for SSH on $IP_ADDRESS..."
+          for i in {1..20}; do
             if nc -z -w 5 $IP_ADDRESS 22; then
-              echo "SSH is available!"
+              echo "✅ SSH is available!"
               exit 0
             fi
-            echo "Attempt $i/30: SSH not ready yet..."
+            echo "Attempt $i/20: still waiting..."
             sleep 10
           done
-          echo "SSH failed to become available in time"
+          echo "❌ SSH not available in time"
           exit 1
         env:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
 
-      # Step 13: Deploy with Ansible - CORRECTED
+      # Step 11: Deploy with Ansible
       - name: 🚀 Deploy with Ansible
         run: |
-          # Setup SSH
           mkdir -p ~/.ssh/
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/monitor.pem
-          chmod 600 ~/.ssh/monitor.pem
-          
-          # Add to known hosts
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/donatus.pem
+          chmod 600 ~/.ssh/donatus.pem
+
           ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts 2>/dev/null
-          
-          # Wait for SSH to be fully ready
-          echo "Waiting 20 seconds for SSH to be fully ready..."
-          sleep 20
-          
-          # Test SSH connection
-          echo "Testing SSH connection..."
-          ssh -i ~/.ssh/monitor.pem \
-              -o StrictHostKeyChecking=no \
-              -o ConnectTimeout=30 \
-              -o UserKnownHostsFile=/dev/null \
-              ubuntu@$IP_ADDRESS "echo '✅ SSH connection successful!'"
-          
-          # Run Ansible
-          echo "Running Ansible playbook..."
-          ANSIBLE_HOST_KEY_CHECKING=False \
+
+          echo "Testing SSH..."
+          ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no ubuntu@$IP_ADDRESS "echo '✅ Connected!'"
+
           ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml \
-            --private-key=~/.ssh/monitor.pem \
-            -u ubuntu \
-            -v \
-            --extra-vars "ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'"
-          
-          echo "🎉 Deployment complete!"
-          echo "🌐 WordPress: http://$IP_ADDRESS"
-          echo "📊 Grafana: http://$IP_ADDRESS/grafana"
+            --private-key=~/.ssh/donatus.pem \
+            -u ubuntu
         env:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
 
-      # Step 14: Cleanup
+      # Step 12: Cleanup
       - name: 🧹 Cleanup
         if: always()
         run: rm -f terraform/tfplan

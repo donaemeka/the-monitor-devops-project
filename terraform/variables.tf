@@ -1,18 +1,8 @@
 # variables.tf
-variable "vpc_id" {
-  description = "The ID of the existing VPC"
-  type        = string
-}
-
-variable "subnet_id" {
-  description = "The ID of the existing subnet"
-  type        = string
-}
-
 variable "ami_id" {
   description = "The AMI ID for the EC2 instance"
   type        = string
-  default     = "ami-0d729d2846a86a9e7" # Ubuntu 22.04 LTS in eu-west-2
+  default     = "ami-0360c520857e3138f"  # CHANGED to Ubuntu 22.04 in us-east-1
 }
 
 variable "instance_type" {

@@ -13,33 +13,72 @@ terraform {
   backend "s3" {
     bucket         = "my-new-terraform-bucket"
     key            = "monitor-project/terraform.tfstate"
-    region         = "eu-west-2"
+    region         = "us-east-1"  # CHANGED to us-east-1
     encrypt        = true
   }
 }
 
 provider "aws" {
-  region = "eu-west-2"
+  region = "us-east-1"  # CHANGED to us-east-1
 }
 
 # ------------------------------------------------------------
-# Use existing VPC and Subnet
+# Create NEW VPC and Subnet (instead of using existing)
 # ------------------------------------------------------------
-data "aws_vpc" "existing_vpc" {
-  id = var.vpc_id
+resource "aws_vpc" "monitor_vpc" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = "Monitor-VPC"
+  }
 }
 
-data "aws_subnet" "existing_subnet" {
-  id = var.subnet_id
+resource "aws_subnet" "monitor_subnet" {
+  vpc_id                  = aws_vpc.monitor_vpc.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "us-east-1a"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "Monitor-Subnet"
+  }
+}
+
+resource "aws_internet_gateway" "monitor_igw" {
+  vpc_id = aws_vpc.monitor_vpc.id
+
+  tags = {
+    Name = "Monitor-IGW"
+  }
+}
+
+resource "aws_route_table" "monitor_rt" {
+  vpc_id = aws_vpc.monitor_vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.monitor_igw.id
+  }
+
+  tags = {
+    Name = "Monitor-RouteTable"
+  }
+}
+
+resource "aws_route_table_association" "monitor_rta" {
+  subnet_id      = aws_subnet.monitor_subnet.id
+  route_table_id = aws_route_table.monitor_rt.id
 }
 
 # ------------------------------------------------------------
-# Security Group - FIXED: Removed random suffix
+# Security Group
 # ------------------------------------------------------------
 resource "aws_security_group" "monitor_sg" {
-  name        = "monitor-sg"  # REMOVED: -${random_id.suffix.hex}
+  name        = "monitor-sg"
   description = "Security group for Monitor servers"
-  vpc_id      = data.aws_vpc.existing_vpc.id
+  vpc_id      = aws_vpc.monitor_vpc.id  # CHANGED to new VPC
 
   ingress {
     description = "Allow HTTP"
@@ -93,23 +132,22 @@ resource "aws_security_group" "monitor_sg" {
     Name = "Monitor-SG"
   }
 
-  # ADDED: Lifecycle to prevent recreation
   lifecycle {
     create_before_destroy = true
   }
 }
 
 # ------------------------------------------------------------
-# EC2 Instance - FIXED: Consistent naming
+# EC2 Instance
 # ------------------------------------------------------------
 resource "aws_instance" "monitor_server" {
   ami           = var.ami_id
   instance_type = var.instance_type
   key_name      = var.key_name
 
-  subnet_id              = data.aws_subnet.existing_subnet.id
+  subnet_id              = aws_subnet.monitor_subnet.id  # CHANGED to new subnet
   vpc_security_group_ids = [aws_security_group.monitor_sg.id]
-  associate_public_ip_address = false # We'll use Elastic IP
+  associate_public_ip_address = true  # CHANGED to true since we have public subnet
 
   root_block_device {
     volume_size = var.root_volume_size
@@ -124,29 +162,27 @@ resource "aws_instance" "monitor_server" {
               EOF
 
   tags = {
-    Name = "Monitor-Server"  # REMOVED: -${random_id.suffix.hex}
+    Name = "Monitor-Server"
   }
 
-  # ADDED: Lifecycle to prevent recreation
   lifecycle {
     create_before_destroy = true
-    ignore_changes = [ami]  # Don't recreate if AMI changes
+    ignore_changes = [ami]
   }
 }
 
 # ------------------------------------------------------------
-# Elastic IP - FIXED: Consistent naming
+# Elastic IP
 # ------------------------------------------------------------
 resource "aws_eip" "monitor_eip" {
-  vpc = true
+  domain = "vpc"  # CHANGED from vpc = true to domain = "vpc"
   
   tags = {
-    Name = "Monitor-EIP"  # REMOVED: -${random_id.suffix.hex}
+    Name = "Monitor-EIP"
   }
 
-  # ADDED: Lifecycle to prevent recreation
   lifecycle {
-    prevent_destroy = true  # Don't destroy/recreate EIP
+    prevent_destroy = false  # CHANGED to allow destruction
   }
 }
 
@@ -173,7 +209,17 @@ output "security_group_id" {
   value       = aws_security_group.monitor_sg.id
 }
 
+output "vpc_id" {
+  description = "ID of the VPC"
+  value       = aws_vpc.monitor_vpc.id
+}
+
+output "subnet_id" {
+  description = "ID of the subnet"
+  value       = aws_subnet.monitor_subnet.id
+}
+
 output "ssh_connection" {
   description = "SSH connection command"
-  value       = "ssh -i your-key.pem ubuntu@${aws_eip.monitor_eip.public_ip}"
+  value       = "ssh -i donatus.pem ubuntu@${aws_eip.monitor_eip.public_ip}"
 }
