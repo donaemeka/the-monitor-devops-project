@@ -222,5 +222,5 @@ output "subnet_id" {
 
 output "ssh_connection" {
   description = "SSH connection command"
-  value       = "ssh -i donatus.pem ubuntu@${aws_eip.monitor_eip.public_ip}"
+  value = "ssh -i donatus.pem ec2-user@${aws_eip.monitor_eip.public_ip}"
 }
