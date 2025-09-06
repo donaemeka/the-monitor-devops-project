@@ -1,45 +1,91 @@
 ---
-- name: Configure Ubuntu Server for The Monitor
+- name: Configure Amazon Linux 2 Server for The Monitor
   hosts: all
   become: yes
+  gather_facts: no  # Temporarily disable until Python is upgraded
+
+  pre_tasks:
+    - name: Install Python 3.8+
+      block:
+        - name: Install Amazon Linux Extras repository
+          yum:
+            name: amazon-linux-extras
+            state: present
+
+        - name: Enable Python 3.8
+          command: amazon-linux-extras enable python3.8
+          changed_when: false
+
+        - name: Install Python 3.8
+          yum:
+            name: python3.8
+            state: present
+
+        - name: Set alternatives to use Python 3.8
+          alternatives:
+            name: python3
+            path: /usr/bin/python3.8
+            priority: 100
+
+      rescue:
+        - name: Fallback - Install Python 3.8 from source if needed
+          block:
+            - name: Install development tools
+              yum:
+                name:
+                  - gcc
+                  - openssl-devel
+                  - bzip2-devel
+                  - libffi-devel
+                  - zlib-devel
+                  - make
+                state: present
+
+            - name: Download Python 3.8 source
+              get_url:
+                url: https://www.python.org/ftp/python/3.8.18/Python-3.8.18.tgz
+                dest: /tmp/Python-3.8.18.tgz
+
+            - name: Extract Python source
+              unarchive:
+                src: /tmp/Python-3.8.18.tgz
+                dest: /tmp
+                remote_src: yes
+
+            - name: Configure and install Python 3.8
+              command: |
+                cd /tmp/Python-3.8.18
+                ./configure --enable-optimizations
+                make altinstall
+              args:
+                chdir: /tmp/Python-3.8.18
+
+            - name: Create symlink for python3
+              file:
+                src: /usr/local/bin/python3.8
+                dest: /usr/bin/python3
+                state: link
+                force: yes
+
+    - name: Gather facts after Python upgrade
+      setup:
 
   tasks:
-    # Update packages
-    - name: Update apt cache
-      apt:
-        update_cache: yes
+    # Update all packages
+    - name: Update all packages
+      yum:
+        name: '*'
+        state: latest
 
-    # Install required packages for Docker
+    # Install required dependencies
     - name: Install dependencies
-      apt:
+      yum:
         name:
-          - apt-transport-https
-          - ca-certificates
+          - docker
+          - git
           - curl
-          - software-properties-common
+          - wget
         state: present
-
-    # Add Docker GPG key
-    - name: Add Docker GPG key
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
-
-    # Add Docker repository
-    - name: Add Docker repository
-      apt_repository:
-        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable
-        state: present
-
-    # Install Docker & Docker CLI
-    - name: Install Docker
-      apt:
-        name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
-        state: present
-        update_cache: yes
 
     # Install Docker Compose
     - name: Install Docker Compose
@@ -48,28 +94,51 @@
         dest: /usr/local/bin/docker-compose
         mode: '0755'
 
+    # Start and enable Docker service
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
     # Create app folder
     - name: Create application directory
       file:
         path: /opt/the-monitor
         state: directory
         mode: '0755'
+        owner: ec2-user
+        group: ec2-user
 
     # Copy config files from repo to server
     - name: Copy Docker Compose file
       copy:
         src: "../docker-compose.yml"
         dest: "/opt/the-monitor/docker-compose.yml"
+        owner: ec2-user
+        group: ec2-user
 
     - name: Copy Caddyfile
       copy:
         src: "../Caddyfile"
         dest: "/opt/the-monitor/Caddyfile"
+        owner: ec2-user
+        group: ec2-user
 
     - name: Copy Prometheus config
       copy:
         src: "../prometheus.yml"
         dest: "/opt/the-monitor/prometheus.yml"
+        owner: ec2-user
+        group: ec2-user
+
+    # Change ownership of the entire directory
+    - name: Change ownership of app directory
+      file:
+        path: /opt/the-monitor
+        owner: ec2-user
+        group: ec2-user
+        recurse: yes
 
     # Start Docker Compose stack
     - name: Start Docker Compose stack
@@ -77,9 +146,15 @@
         project_src: /opt/the-monitor
         state: present
 
-    # Ensure Docker runs on reboot
-    - name: Ensure Docker service is enabled
+    # Add ec2-user to docker group to run without sudo
+    - name: Add ec2-user to docker group
+      user:
+        name: ec2-user
+        groups: docker
+        append: yes
+
+  handlers:
+    - name: restart docker
       systemd:
         name: docker
-        state: started
-        enabled: yes
+        state: restarted

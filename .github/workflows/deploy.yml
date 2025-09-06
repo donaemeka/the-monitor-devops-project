@@ -138,7 +138,7 @@ jobs:
         env:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
 
-      # Step 11: Deploy with Ansible - FIXED USERNAME (ubuntu → ec2-user)
+      # Step 11: Deploy with Ansible - UPDATED for Amazon Linux 2 and Python 3.8
       - name: 🚀 Deploy with Ansible
         run: |
           mkdir -p ~/.ssh/
@@ -150,9 +150,23 @@ jobs:
           echo "Testing SSH..."
           ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no -o ConnectTimeout=30 ec2-user@$IP_ADDRESS "echo '✅ Connected!'"
 
+          # First, upgrade Python on the remote server to 3.8+
+          echo "Upgrading Python on remote server to 3.8+..."
+          ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no ec2-user@$IP_ADDRESS << 'EOF'
+          sudo amazon-linux-extras enable python3.8
+          sudo yum install -y python3.8
+          sudo alternatives --set python3 /usr/bin/python3.8
+          python3 --version
+          EOF
+
+          # Install required Ansible collection
+          ansible-galaxy collection install community.docker
+
+          # Now run Ansible with the correct Python interpreter
           ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml \
             --private-key=~/.ssh/donatus.pem \
             -u ec2-user \
+            -e "ansible_python_interpreter=/usr/bin/python3.8" \
             -e "ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
         env:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
