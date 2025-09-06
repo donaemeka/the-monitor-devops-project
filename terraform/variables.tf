@@ -2,7 +2,7 @@
 variable "ami_id" {
   description = "The AMI ID for the EC2 instance"
   type        = string
-  default     = "ami-0360c520857e3138f"  # CHANGED to Ubuntu 22.04 in us-east-1
+  default     = "ami-0aa7d40eeae50c9a9"  # Ubuntu 22.04 in us-east-1
 }
 
 variable "instance_type" {

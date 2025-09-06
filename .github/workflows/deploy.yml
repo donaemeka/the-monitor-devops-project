@@ -37,45 +37,44 @@ jobs:
           EOF
           echo "✅ terraform.tfvars created!"
 
-      # Step 5: Verify AWS Key Pair Exists - FIXED REGION
+      # Step 5: Verify AWS Key Pair Exists - FIXED SYNTAX
       - name: 🔍 Verify Key Pair
         run: |
-          aws ec2 describe-key-pairs \
-            --region us-east-1 \  # Checking us-east-1
-            --key-names "donatus"
+          echo "=== Checking Key Pair in us-east-1 ==="
+          aws ec2 describe-key-pairs --region us-east-1 --key-names "donatus"
           echo "✅ Key pair 'donatus' exists in us-east-1!"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1  # CHANGED to us-east-1
+          AWS_REGION: us-east-1
 
-      # Step 6: Terraform Init - FIXED REGION
+      # Step 6: Terraform Init
       - name: 🔧 Terraform Init
         run: |
           terraform -chdir=terraform init \
             -backend-config="bucket=my-new-terraform-bucket" \
-            -backend-config="region=us-east-1" \  # CHANGED to us-east-1
+            -backend-config="region=us-east-1" \
             -backend-config="key=monitor-project/terraform.tfstate"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1  # CHANGED to us-east-1
+          AWS_REGION: us-east-1
 
-      # Step 7: Terraform Plan - FIXED REGION
+      # Step 7: Terraform Plan
       - name: 📋 Terraform Plan
         run: terraform -chdir=terraform plan -var-file="terraform.tfvars" -out=tfplan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1  # CHANGED to us-east-1
+          AWS_REGION: us-east-1
 
-      # Step 8: Terraform Apply - FIXED REGION
+      # Step 8: Terraform Apply
       - name: ✅ Terraform Apply
         run: terraform -chdir=terraform apply -auto-approve tfplan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1  # CHANGED to us-east-1
+          AWS_REGION: us-east-1
 
       # Step 9: Get EC2 IP
       - name: 📝 Get Server IP
@@ -87,7 +86,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1  # CHANGED to us-east-1
+          AWS_REGION: us-east-1
 
       # Step 10: Wait for SSH
       - name: ⏳ Wait for SSH
