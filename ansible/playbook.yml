@@ -2,70 +2,22 @@
 - name: Configure Amazon Linux 2 Server for The Monitor
   hosts: all
   become: yes
-  gather_facts: no  # Temporarily disable until Python is upgraded
+  gather_facts: no
 
   pre_tasks:
-    - name: Install Python 3.8+
-      block:
-        - name: Install Amazon Linux Extras repository
-          yum:
-            name: amazon-linux-extras
-            state: present
+    - name: Install Python 3.8
+      yum:
+        name:
+          - python3.8
+          - python3.8-pip
+        state: present
+      when: ansible_pkg_mgr == "yum"
 
-        - name: Enable Python 3.8
-          command: amazon-linux-extras enable python3.8
-          changed_when: false
-
-        - name: Install Python 3.8
-          yum:
-            name: python3.8
-            state: present
-
-        - name: Set alternatives to use Python 3.8
-          alternatives:
-            name: python3
-            path: /usr/bin/python3.8
-            priority: 100
-
-      rescue:
-        - name: Fallback - Install Python 3.8 from source if needed
-          block:
-            - name: Install development tools
-              yum:
-                name:
-                  - gcc
-                  - openssl-devel
-                  - bzip2-devel
-                  - libffi-devel
-                  - zlib-devel
-                  - make
-                state: present
-
-            - name: Download Python 3.8 source
-              get_url:
-                url: https://www.python.org/ftp/python/3.8.18/Python-3.8.18.tgz
-                dest: /tmp/Python-3.8.18.tgz
-
-            - name: Extract Python source
-              unarchive:
-                src: /tmp/Python-3.8.18.tgz
-                dest: /tmp
-                remote_src: yes
-
-            - name: Configure and install Python 3.8
-              command: |
-                cd /tmp/Python-3.8.18
-                ./configure --enable-optimizations
-                make altinstall
-              args:
-                chdir: /tmp/Python-3.8.18
-
-            - name: Create symlink for python3
-              file:
-                src: /usr/local/bin/python3.8
-                dest: /usr/bin/python3
-                state: link
-                force: yes
+    - name: Set python3.8 as default
+      alternatives:
+        name: python3
+        path: /usr/bin/python3.8
+        priority: 100
 
     - name: Gather facts after Python upgrade
       setup:
@@ -76,6 +28,7 @@
       yum:
         name: '*'
         state: latest
+        use_backend: dnf4
 
     # Install required dependencies
     - name: Install dependencies
@@ -86,6 +39,7 @@
           - curl
           - wget
         state: present
+        use_backend: dnf4
 
     # Install Docker Compose
     - name: Install Docker Compose

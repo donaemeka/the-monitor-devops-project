@@ -138,7 +138,7 @@ jobs:
         env:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
 
-      # Step 11: Deploy with Ansible - UPDATED for Amazon Linux 2 and Python 3.8
+      # Step 11: Deploy with Ansible - FIXED Python 3.8 setup
       - name: 🚀 Deploy with Ansible
         run: |
           mkdir -p ~/.ssh/
@@ -150,12 +150,19 @@ jobs:
           echo "Testing SSH..."
           ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no -o ConnectTimeout=30 ec2-user@$IP_ADDRESS "echo '✅ Connected!'"
 
-          # First, upgrade Python on the remote server to 3.8+
+          # First, upgrade Python on the remote server to 3.8+ and set it as default
           echo "Upgrading Python on remote server to 3.8+..."
           ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no ec2-user@$IP_ADDRESS << 'EOF'
           sudo amazon-linux-extras enable python3.8
-          sudo yum install -y python3.8
+          sudo yum clean metadata
+          sudo yum install -y python3.8 python3.8-pip
+          
+          # Set python3.8 as the default python3
+          sudo alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 100
           sudo alternatives --set python3 /usr/bin/python3.8
+          
+          # Verify the correct version
+          echo "Python version after setup:"
           python3 --version
           EOF
 
