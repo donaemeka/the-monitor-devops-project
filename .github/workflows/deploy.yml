@@ -37,20 +37,17 @@ jobs:
           EOF
           echo "✅ terraform.tfvars created!"
 
-      # Step 4.5: Create New S3 Bucket - ADDED
+      # Step 4.5: Create New S3 Bucket - FIXED for us-east-1
       - name: 🪣 Create New S3 Bucket
         run: |
           echo "=== Creating New S3 Bucket ==="
           
-          # Create unique bucket name with account ID and timestamp
-          NEW_BUCKET="terraform-state-$(aws sts get-caller-identity --query Account --output text)-us-east-1-$(date +%s)"
-          echo "Creating new bucket: $NEW_BUCKET"
+          # Create unique bucket name
+          NEW_BUCKET="terraform-state-426333731292-us-east-1"
+          echo "Using bucket: $NEW_BUCKET"
           
-          # Create bucket in us-east-1
-          aws s3api create-bucket \
-            --bucket $NEW_BUCKET \
-            --region us-east-1 \
-            --create-bucket-configuration LocationConstraint=us-east-1
+          # For us-east-1, use simple mb command (no LocationConstraint)
+          aws s3 mb s3://$NEW_BUCKET --region us-east-1 || echo "Bucket may already exist"
           
           # Enable versioning
           aws s3api put-bucket-versioning \
@@ -78,7 +75,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: us-east-1
 
-      # Step 6: Terraform Init - UPDATED (no need for backend-config)
+      # Step 6: Terraform Init
       - name: 🔧 Terraform Init
         run: terraform -chdir=terraform init
         env:
