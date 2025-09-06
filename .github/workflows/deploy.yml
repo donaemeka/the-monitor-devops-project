@@ -33,8 +33,6 @@ jobs:
         run: |
           mkdir -p terraform
           cat > terraform/terraform.tfvars << 'EOF'
-          vpc_id    = "vpc-0280c538c474724ba"
-          subnet_id = "subnet-0955441f00fafb2e7"
           key_name  = "donatus"
           EOF
           echo "✅ terraform.tfvars created!"
@@ -43,7 +41,7 @@ jobs:
       - name: 🔍 Verify Key Pair
         run: |
           aws ec2 describe-key-pairs \
-            --region eu-west-2 \
+            --region us-east-1 \
             --key-names "donatus"
           echo "✅ Key pair 'donatus' exists!"
         env:
