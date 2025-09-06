@@ -37,45 +37,45 @@ jobs:
           EOF
           echo "✅ terraform.tfvars created!"
 
-      # Step 5: Verify AWS Key Pair Exists
+      # Step 5: Verify AWS Key Pair Exists - FIXED REGION
       - name: 🔍 Verify Key Pair
         run: |
           aws ec2 describe-key-pairs \
-            --region us-east-1 \
+            --region us-east-1 \  # Checking us-east-1
             --key-names "donatus"
-          echo "✅ Key pair 'donatus' exists!"
+          echo "✅ Key pair 'donatus' exists in us-east-1!"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-west-2
+          AWS_REGION: us-east-1  # CHANGED to us-east-1
 
-      # Step 6: Terraform Init
+      # Step 6: Terraform Init - FIXED REGION
       - name: 🔧 Terraform Init
         run: |
           terraform -chdir=terraform init \
             -backend-config="bucket=my-new-terraform-bucket" \
-            -backend-config="region=eu-west-2" \
+            -backend-config="region=us-east-1" \  # CHANGED to us-east-1
             -backend-config="key=monitor-project/terraform.tfstate"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-west-2
+          AWS_REGION: us-east-1  # CHANGED to us-east-1
 
-      # Step 7: Terraform Plan
+      # Step 7: Terraform Plan - FIXED REGION
       - name: 📋 Terraform Plan
         run: terraform -chdir=terraform plan -var-file="terraform.tfvars" -out=tfplan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-west-2
+          AWS_REGION: us-east-1  # CHANGED to us-east-1
 
-      # Step 8: Terraform Apply
+      # Step 8: Terraform Apply - FIXED REGION
       - name: ✅ Terraform Apply
         run: terraform -chdir=terraform apply -auto-approve tfplan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: eu-west-2
+          AWS_REGION: us-east-1  # CHANGED to us-east-1
 
       # Step 9: Get EC2 IP
       - name: 📝 Get Server IP
@@ -84,6 +84,10 @@ jobs:
           IP=$(terraform -chdir=terraform output -raw public_ip)
           echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
           echo "✅ Server IP: $IP"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1  # CHANGED to us-east-1
 
       # Step 10: Wait for SSH
       - name: ⏳ Wait for SSH
@@ -112,11 +116,12 @@ jobs:
           ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts 2>/dev/null
 
           echo "Testing SSH..."
-          ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no ubuntu@$IP_ADDRESS "echo '✅ Connected!'"
+          ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no -o ConnectTimeout=30 ubuntu@$IP_ADDRESS "echo '✅ Connected!'"
 
           ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml \
             --private-key=~/.ssh/donatus.pem \
-            -u ubuntu
+            -u ubuntu \
+            -e "ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
         env:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
 
