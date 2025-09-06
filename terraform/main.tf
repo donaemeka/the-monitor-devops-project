@@ -1,6 +1,7 @@
 # ============================================================
 # The Monitor DevOps Project - EC2 with Elastic IP
 # ============================================================
+# Trigger pipeline test
 
 terraform {
   required_providers {
