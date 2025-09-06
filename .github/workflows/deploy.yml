@@ -37,7 +37,37 @@ jobs:
           EOF
           echo "✅ terraform.tfvars created!"
 
-      # Step 5: Verify AWS Key Pair Exists - FIXED SYNTAX
+      # Step 4.5: Create New S3 Bucket - ADDED
+      - name: 🪣 Create New S3 Bucket
+        run: |
+          echo "=== Creating New S3 Bucket ==="
+          
+          # Create unique bucket name with account ID and timestamp
+          NEW_BUCKET="terraform-state-$(aws sts get-caller-identity --query Account --output text)-us-east-1-$(date +%s)"
+          echo "Creating new bucket: $NEW_BUCKET"
+          
+          # Create bucket in us-east-1
+          aws s3api create-bucket \
+            --bucket $NEW_BUCKET \
+            --region us-east-1 \
+            --create-bucket-configuration LocationConstraint=us-east-1
+          
+          # Enable versioning
+          aws s3api put-bucket-versioning \
+            --bucket $NEW_BUCKET \
+            --versioning-configuration Status=Enabled \
+            --region us-east-1
+          
+          # Update Terraform configuration to use new bucket
+          sed -i 's/my-new-terraform-bucket/'"$NEW_BUCKET"'/g' terraform/main.tf
+          sed -i 's/region.*=.*"eu-west-2"/region = "us-east-1"/g' terraform/main.tf
+          echo "✅ Updated Terraform to use new bucket: $NEW_BUCKET"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+
+      # Step 5: Verify AWS Key Pair Exists
       - name: 🔍 Verify Key Pair
         run: |
           echo "=== Checking Key Pair in us-east-1 ==="
@@ -48,13 +78,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: us-east-1
 
-      # Step 6: Terraform Init
+      # Step 6: Terraform Init - UPDATED (no need for backend-config)
       - name: 🔧 Terraform Init
-        run: |
-          terraform -chdir=terraform init \
-            -backend-config="bucket=my-new-terraform-bucket" \
-            -backend-config="region=eu-west-2" \
-            -backend-config="key=monitor-project/terraform.tfstate"
+        run: terraform -chdir=terraform init
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
