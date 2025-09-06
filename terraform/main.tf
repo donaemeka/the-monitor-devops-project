@@ -13,7 +13,7 @@ terraform {
   backend "s3" {
     bucket         = "my-new-terraform-bucket"
     key            = "monitor-project/terraform.tfstate"
-    region         = "us-east-1"  # CHANGED to us-east-1
+    region         = "eu-west-2"  # CHANGED to us-east-1
     encrypt        = true
   }
 }
