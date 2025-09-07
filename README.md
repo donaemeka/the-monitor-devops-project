@@ -42,9 +42,17 @@ it was Designed for developers and operations teams who need better visibility i
 ![Security Group](./images/11-security-group-rules.png)
 *Security group configuration with proper rules*
 
+
+
+
+
 ### CI/CD Pipeline
 ![GitHub Actions](./images/04-github-actions-pipeline.png)
 *Successful GitHub Actions CI/CD pipeline*
+
+
+
+
 
 ### Application Deployment
 ![Docker Containers](./images/6-docker-containers-active.png)
@@ -53,6 +61,11 @@ it was Designed for developers and operations teams who need better visibility i
 ![WordPress Site](./images/08-wordpress-site-live.png)
 *WordPress application live and accessible*
 
+
+
+
+
+
 ### Monitoring Stack
 ![Grafana Dashboard](./images/07-grafana-dashboard.png)
 *Grafana monitoring dashboard with system metrics*
@@ -60,9 +73,16 @@ it was Designed for developers and operations teams who need better visibility i
 ![Prometheus Metrics](./images/09-prometheus-metrics.png)
 *Prometheus collecting and storing metrics*
 
+
+
+
+
 ### Configuration Management
 ![Ansible Execution](./images/10-ansible-execution.png)
 *Ansible playbook execution output*
+
+
+
 
 ## 📋 Prerequisites
 
