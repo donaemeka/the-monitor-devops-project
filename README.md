@@ -29,6 +29,13 @@ it was Designed for developers and operations teams who need better visibility i
 ---
 ## 📸 Screenshots
 
+
+### Architecture Overview
+![Architecture Diagram](./images/1-architecture-diagram.png)
+*System architecture showing all components and connections*
+
+
+
 ### Infrastructure Provisioning
 ![Terraform Plan](./images/2-terraform-plan-output.png)
 *Terraform plan showing infrastructure changes*
