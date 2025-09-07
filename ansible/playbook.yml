@@ -106,3 +106,7 @@
     - name: Print completion message
       debug:
         msg: "🎉 Deployment completed successfully on {{ inventory_hostname }}!"
+
+    - name: Force output to prevent timeout
+      command: echo "✅ Keeping connection alive..."
+      changed_when: false
