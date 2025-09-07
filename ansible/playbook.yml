@@ -5,12 +5,21 @@
   gather_facts: no
 
   tasks:
+    - name: Print start message
+      debug:
+        msg: "🚀 Starting Ansible deployment on {{ inventory_hostname }}"
+
     # Verify Docker is running
     - name: Check if Docker is running
       systemd:
         name: docker
         state: started
         enabled: yes
+      register: docker_status
+
+    - name: Show Docker status
+      debug:
+        msg: "Docker service status: {{ docker_status.state }}"
 
     # Create application directory
     - name: Create app directory
@@ -20,6 +29,11 @@
         mode: '0755'
         owner: ec2-user
         group: ec2-user
+      register: dir_creation
+
+    - name: Show directory creation result
+      debug:
+        msg: "Application directory created: {{ dir_creation.state }}"
 
     # Copy configuration files
     - name: Copy Docker Compose file
@@ -28,6 +42,11 @@
         dest: "/opt/the-monitor/docker-compose.yml"
         owner: ec2-user
         group: ec2-user
+      register: copy_docker_compose
+
+    - name: Show Docker Compose copy result
+      debug:
+        msg: "Docker Compose file copied: {{ copy_docker_compose.changed }}"
 
     - name: Copy Caddyfile
       copy:
@@ -35,6 +54,11 @@
         dest: "/opt/the-monitor/Caddyfile"
         owner: ec2-user
         group: ec2-user
+      register: copy_caddyfile
+
+    - name: Show Caddyfile copy result
+      debug:
+        msg: "Caddyfile copied: {{ copy_caddyfile.changed }}"
 
     - name: Copy Prometheus config
       copy:
@@ -42,6 +66,11 @@
         dest: "/opt/the-monitor/prometheus.yml"
         owner: ec2-user
         group: ec2-user
+      register: copy_prometheus
+
+    - name: Show Prometheus config copy result
+      debug:
+        msg: "Prometheus config copied: {{ copy_prometheus.changed }}"
 
     # Install Docker Compose
     - name: Install Docker Compose
@@ -49,9 +78,23 @@
         url: https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-linux-x86_64
         dest: /usr/local/bin/docker-compose
         mode: '0755'
+      register: install_docker_compose
+
+    - name: Show Docker Compose installation result
+      debug:
+        msg: "Docker Compose installed: {{ install_docker_compose.changed }}"
 
     # Start the application with Docker Compose
     - name: Start with Docker Compose
       community.docker.docker_compose_v2:
         project_src: /opt/the-monitor
         state: present
+      register: docker_compose_result
+
+    - name: Show Docker Compose result
+      debug:
+        msg: "Docker Compose deployment completed: {{ docker_compose_result.changed }}"
+
+    - name: Print completion message
+      debug:
+        msg: "🎉 Deployment completed successfully on {{ inventory_hostname }}!"
