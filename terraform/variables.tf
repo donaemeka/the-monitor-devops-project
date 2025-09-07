@@ -1,8 +1,8 @@
 # variables.tf
 variable "ami_id" {
-  description = "The AMI ID for the EC2 instance"
+  description = "The AMI ID for the EC2 instance (Amazon Linux 2)"
   type        = string
-  default     = "ami-0aa7d40eeae50c9a9"  # Ubuntu 22.04 in us-east-1
+  default     = "ami-0aa7d40eeae50c9a9"  # Amazon Linux 2 in us-east-1
 }
 
 variable "instance_type" {

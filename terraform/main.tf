@@ -1,7 +1,6 @@
 # ============================================================
 # The Monitor DevOps Project - EC2 with Elastic IP
 # ============================================================
-# Trigger pipeline test
 
 terraform {
   required_providers {
@@ -12,19 +11,19 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "my-new-terraform-bucket"
+    bucket         = "terraform-state-426333731292-us-east-1"
     key            = "monitor-project/terraform.tfstate"
-    region         = "us-east-1"  # CHANGED to us-east-1
+    region         = "us-east-1"
     encrypt        = true
   }
 }
 
 provider "aws" {
-  region = "us-east-1"  # CHANGED to us-east-1
+  region = "us-east-1"
 }
 
 # ------------------------------------------------------------
-# Create NEW VPC and Subnet (instead of using existing)
+# Create NEW VPC and Subnet
 # ------------------------------------------------------------
 resource "aws_vpc" "monitor_vpc" {
   cidr_block           = "10.0.0.0/16"
@@ -74,29 +73,14 @@ resource "aws_route_table_association" "monitor_rta" {
 }
 
 # ------------------------------------------------------------
-# Security Group
+# Security Group - COMPLETE VERSION
 # ------------------------------------------------------------
 resource "aws_security_group" "monitor_sg" {
   name        = "monitor-sg"
   description = "Security group for Monitor servers"
-  vpc_id      = aws_vpc.monitor_vpc.id  # CHANGED to new VPC
+  vpc_id      = aws_vpc.monitor_vpc.id
 
-  ingress {
-    description = "Allow HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "Allow HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
+  # SSH access
   ingress {
     description = "Allow SSH"
     from_port   = 22
@@ -105,6 +89,25 @@ resource "aws_security_group" "monitor_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # HTTP access
+  ingress {
+    description = "Allow HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # HTTPS access
+  ingress {
+    description = "Allow HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Grafana access
   ingress {
     description = "Allow Grafana"
     from_port   = 3000
@@ -113,6 +116,16 @@ resource "aws_security_group" "monitor_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Prometheus access
+  ingress {
+    description = "Allow Prometheus"
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Node Exporter access
   ingress {
     description = "Allow Node Exporter"
     from_port   = 9100
@@ -121,6 +134,16 @@ resource "aws_security_group" "monitor_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Caddy admin access
+  ingress {
+    description = "Allow Caddy admin"
+    from_port   = 2019
+    to_port     = 2019
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow all outbound
   egress {
     description = "Allow all outbound"
     from_port   = 0
@@ -139,16 +162,16 @@ resource "aws_security_group" "monitor_sg" {
 }
 
 # ------------------------------------------------------------
-# EC2 Instance
+# EC2 Instance - FIXED FOR AMAZON LINUX 2
 # ------------------------------------------------------------
 resource "aws_instance" "monitor_server" {
   ami           = var.ami_id
   instance_type = var.instance_type
   key_name      = var.key_name
 
-  subnet_id              = aws_subnet.monitor_subnet.id  # CHANGED to new subnet
+  subnet_id              = aws_subnet.monitor_subnet.id
   vpc_security_group_ids = [aws_security_group.monitor_sg.id]
-  associate_public_ip_address = true  # CHANGED to true since we have public subnet
+  associate_public_ip_address = true
 
   root_block_device {
     volume_size = var.root_volume_size
@@ -156,10 +179,11 @@ resource "aws_instance" "monitor_server" {
     encrypted   = true
   }
 
+  # Amazon Linux 2 compatible user data
   user_data = <<-EOF
               #!/bin/bash
-              apt-get update
-              apt-get install -y python3
+              yum update -y
+              yum install -y python3
               EOF
 
   tags = {
@@ -176,14 +200,14 @@ resource "aws_instance" "monitor_server" {
 # Elastic IP
 # ------------------------------------------------------------
 resource "aws_eip" "monitor_eip" {
-  domain = "vpc"  # CHANGED from vpc = true to domain = "vpc"
+  domain = "vpc"
   
   tags = {
     Name = "Monitor-EIP"
   }
 
   lifecycle {
-    prevent_destroy = false  # CHANGED to allow destruction
+    prevent_destroy = false
   }
 }
 
