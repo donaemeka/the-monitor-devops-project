@@ -5,13 +5,27 @@
   gather_facts: no
 
   pre_tasks:
+    # First gather minimal facts to detect package manager
+    - name: Gather minimal facts
+      setup:
+        gather_subset: min
+
     - name: Install Python 3.8
       yum:
         name:
           - python3.8
-          - python3.8-pip
         state: present
-      when: ansible_pkg_mgr == "yum"
+
+    - name: Install pip for Python 3.8
+      get_url:
+        url: https://bootstrap.pypa.io/get-pip.py
+        dest: /tmp/get-pip.py
+        mode: '0755'
+
+    - name: Install pip
+      command: python3.8 /tmp/get-pip.py
+      args:
+        creates: /usr/local/bin/pip3.8
 
     - name: Set python3.8 as default
       alternatives:
@@ -19,7 +33,7 @@
         path: /usr/bin/python3.8
         priority: 100
 
-    - name: Gather facts after Python upgrade
+    - name: Gather full facts after Python upgrade
       setup:
 
   tasks:
@@ -28,7 +42,6 @@
       yum:
         name: '*'
         state: latest
-        use_backend: dnf4
 
     # Install required dependencies
     - name: Install dependencies
@@ -39,7 +52,6 @@
           - curl
           - wget
         state: present
-        use_backend: dnf4
 
     # Install Docker Compose
     - name: Install Docker Compose
