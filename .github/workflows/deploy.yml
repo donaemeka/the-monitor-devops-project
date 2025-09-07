@@ -1,4 +1,4 @@
-name: 🚀 Deploy The Monitor Project
+name:  Deploy The Monitor Project
 
 on:
   push:
@@ -11,19 +11,19 @@ jobs:
 
     steps:
       # Step 1: Checkout repo
-      - name: 📦 Checkout code
+      - name:  Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       # Step 2: Setup Terraform
-      - name: 🛠️ Setup Terraform
+      - name:  Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: "1.5.0"
 
       # Step 3: Setup Ansible
-      - name: 🛠️ Setup Ansible
+      - name:  Setup Ansible
         run: |
           sudo apt-get update
           sudo apt-get install -y python3-pip sshpass
@@ -35,16 +35,16 @@ jobs:
           
 
       # Step 4: Create terraform.tfvars
-      - name: 📝 Create Terraform Variables File
+      - name:  Create Terraform Variables File
         run: |
           mkdir -p terraform
           cat > terraform/terraform.tfvars << 'EOF'
           key_name  = "donatus"
           EOF
-          echo "✅ terraform.tfvars created!"
+          echo "terraform.tfvars created!"
 
       # Step 4.5: Create S3 Bucket for us-east-1
-      - name: 🪣 Create New S3 Bucket
+      - name:  Create New S3 Bucket
         run: |
           echo "=== Creating New S3 Bucket ==="
           
@@ -64,25 +64,25 @@ jobs:
           # Update Terraform configuration to use new bucket
           sed -i 's/my-new-terraform-bucket/'"$NEW_BUCKET"'/g' terraform/main.tf
           sed -i 's/region.*=.*"eu-west-2"/region = "us-east-1"/g' terraform/main.tf
-          echo "✅ Updated Terraform to use new bucket: $NEW_BUCKET"
+          echo "Updated Terraform to use new bucket: $NEW_BUCKET"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: us-east-1
 
       # Step 5: Verify AWS Key Pair Exists
-      - name: 🔍 Verify Key Pair
+      - name:  Verify Key Pair
         run: |
           echo "=== Checking Key Pair in us-east-1 ==="
           aws ec2 describe-key-pairs --region us-east-1 --key-names "donatus"
-          echo "✅ Key pair 'donatus' exists in us-east-1!"
+          echo "Key pair 'donatus' exists in us-east-1!"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: us-east-1
 
       # Step 6: Terraform Init
-      - name: 🔧 Terraform Init
+      - name:  Terraform Init
         run: terraform -chdir=terraform init
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -90,7 +90,7 @@ jobs:
           AWS_REGION: us-east-1
 
       # Step 7: Terraform Plan
-      - name: 📋 Terraform Plan
+      - name:  Terraform Plan
         run: terraform -chdir=terraform plan -var-file="terraform.tfvars" -out=tfplan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -98,7 +98,7 @@ jobs:
           AWS_REGION: us-east-1
 
       # Step 8: Terraform Apply
-      - name: ✅ Terraform Apply
+      - name:  Terraform Apply
         run: terraform -chdir=terraform apply -auto-approve tfplan
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -106,7 +106,7 @@ jobs:
           AWS_REGION: us-east-1
 
       # Step 9: Get EC2 IP
-      - name: 📝 Get Server IP
+      - name:  Get Server IP
         id: get-ip
         run: |
           # Get raw output and extract only the IP address
@@ -116,7 +116,7 @@ jobs:
           # Verify it's a valid IP address
           if [[ $IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "IP_ADDRESS=$IP" >> $GITHUB_ENV
-            echo "✅ Server IP: $IP"
+            echo " Server IP: $IP"
           else
             echo "❌ ERROR: Invalid IP address format: '$IP'"
             echo "Raw output was: '$RAW_OUTPUT'"
@@ -133,7 +133,7 @@ jobs:
           echo "Waiting for SSH on $IP_ADDRESS..."
           for i in {1..10}; do
             if nc -z -w 5 $IP_ADDRESS 22; then
-              echo "✅ SSH is available!"
+              echo "SSH is available!"
               exit 0
             fi
             echo "Attempt $i/10: still waiting..."
@@ -145,7 +145,7 @@ jobs:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
 
       # Step 11: Install Docker on Server 
-      - name: 🐳 Install Docker on Server
+      - name:  Install Docker on Server
         run: |
           mkdir -p ~/.ssh/
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/donatus.pem
@@ -153,7 +153,7 @@ jobs:
           ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts 2>/dev/null
 
           echo "Testing SSH connection first..."
-          ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no ec2-user@$IP_ADDRESS "echo '✅ SSH connection successful!'"
+          ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no ec2-user@$IP_ADDRESS "echo 'SSH connection successful!'"
 
           echo "Installing Docker on the server..."
           ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no ec2-user@$IP_ADDRESS << 'EOF'
@@ -177,12 +177,12 @@ jobs:
           # Test Docker installation
           echo "Testing Docker installation..."
           ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no ec2-user@$IP_ADDRESS "sudo docker ps"
-          echo "✅ Docker installation verified!"
+          echo "Docker installation verified!"
         env:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
 
       # Step 12: Deploy with Ansible
-      - name: 🚀 Deploy with Ansible
+      - name:  Deploy with Ansible
         run: |
           echo "Running Ansible playbook..."
           ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml \
@@ -193,7 +193,7 @@ jobs:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
 
       # Step 13: Cleanup
-      - name: 🧹 Cleanup
+      - name:  Cleanup
         if: always()
         run: rm -f terraform/tfplan
 

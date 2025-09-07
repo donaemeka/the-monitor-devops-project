@@ -36,3 +36,50 @@ ansible/inventory.ini
 
 # Retry files created after failed Ansible runs
 *.retry
+
+# ------------------------
+# SSH Keys
+# ------------------------
+*.pem
+*.key
+
+# ------------------------
+# Kubernetes
+# ------------------------
+# Kubeconfig files (store separately, not in repo)
+.kube/config
+*.kubeconfig
+
+# Local Minikube data
+.minikube/
+.kind/
+
+# ------------------------
+# Docker
+# ------------------------
+# Ignore Docker images, containers, and temporary files
+docker-compose.override.yml
+*.dockerfile
+*.env
+**/tmp/
+**/logs/
+
+# ------------------------
+# Node.js / Frontend (if applicable)
+# ------------------------
+node_modules/
+dist/
+build/
+.env
+
+# ------------------------
+# IDE / OS files
+# ------------------------
+# VSCode
+.vscode/
+# JetBrains IDEs
+.idea/
+# MacOS
+.DS_Store
+# Linux
+*.swp
