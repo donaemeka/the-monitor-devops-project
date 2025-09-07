@@ -72,7 +72,7 @@
       debug:
         msg: "Prometheus config copied: {{ copy_prometheus.changed }}"
 
-    # Install Docker Compose - FIXED VERSION (using full path)
+    # Install Docker Compose - 
     - name: Install Docker Compose
       get_url:
         url: https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-linux-x86_64
@@ -89,7 +89,7 @@
       debug:
         msg: "Docker Compose version: {{ docker_compose_version.stdout }}"
 
-    # Start the application with Docker Compose - FIXED (use full path)
+    # Start the application with Docker Compose 
     - name: Start with Docker Compose
       command: /usr/local/bin/docker-compose -f /opt/the-monitor/docker-compose.yml up -d
       args:

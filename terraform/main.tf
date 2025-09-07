@@ -22,9 +22,8 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# ------------------------------------------------------------
-# Create NEW VPC and Subnet
-# ------------------------------------------------------------
+
+# VPC and Subnet
 resource "aws_vpc" "monitor_vpc" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_support   = true
@@ -72,9 +71,8 @@ resource "aws_route_table_association" "monitor_rta" {
   route_table_id = aws_route_table.monitor_rt.id
 }
 
-# ------------------------------------------------------------
-# Security Group - COMPLETE VERSION
-# ------------------------------------------------------------
+
+# Security Group 
 resource "aws_security_group" "monitor_sg" {
   name        = "monitor-sg"
   description = "Security group for Monitor servers"
@@ -161,9 +159,8 @@ resource "aws_security_group" "monitor_sg" {
   }
 }
 
-# ------------------------------------------------------------
-# EC2 Instance - FIXED FOR AMAZON LINUX 2
-# ------------------------------------------------------------
+
+# EC2 Instance 
 resource "aws_instance" "monitor_server" {
   ami           = var.ami_id
   instance_type = var.instance_type
@@ -196,9 +193,7 @@ resource "aws_instance" "monitor_server" {
   }
 }
 
-# ------------------------------------------------------------
 # Elastic IP
-# ------------------------------------------------------------
 resource "aws_eip" "monitor_eip" {
   domain = "vpc"
   
@@ -216,9 +211,8 @@ resource "aws_eip_association" "monitor_eip_assoc" {
   allocation_id = aws_eip.monitor_eip.id
 }
 
-# ------------------------------------------------------------
+
 # Outputs
-# ------------------------------------------------------------
 output "public_ip" {
   description = "Elastic IP of the EC2 instance"
   value       = aws_eip.monitor_eip.public_ip

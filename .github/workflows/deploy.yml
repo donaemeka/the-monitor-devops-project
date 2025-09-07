@@ -43,7 +43,7 @@ jobs:
           EOF
           echo "✅ terraform.tfvars created!"
 
-      # Step 4.5: Create New S3 Bucket - FIXED for us-east-1
+      # Step 4.5: Create S3 Bucket for us-east-1
       - name: 🪣 Create New S3 Bucket
         run: |
           echo "=== Creating New S3 Bucket ==="
@@ -144,7 +144,7 @@ jobs:
         env:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
 
-      # Step 11: Install Docker on Server - ADDED THIS STEP
+      # Step 11: Install Docker on Server 
       - name: 🐳 Install Docker on Server
         run: |
           mkdir -p ~/.ssh/

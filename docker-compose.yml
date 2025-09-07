@@ -41,7 +41,7 @@ services:
     image: prom/prometheus:latest
     restart: unless-stopped
     ports:
-      - "9090:9090"  # ADD THIS LINE
+      - "9090:9090"  
     volumes:
       - /opt/the-monitor/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
@@ -51,7 +51,7 @@ services:
     image: grafana/grafana-enterprise:latest
     restart: unless-stopped
     ports:
-      - "3000:3000"  # ADD THIS LINE
+      - "3000:3000"  
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin123
     volumes:

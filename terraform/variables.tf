@@ -2,7 +2,7 @@
 variable "ami_id" {
   description = "The AMI ID for the EC2 instance (Amazon Linux 2)"
   type        = string
-  default     = "ami-0aa7d40eeae50c9a9"  # Amazon Linux 2 in us-east-1
+  default     = "ami-0aa7d40eeae50c9a9"  
 }
 
 variable "instance_type" {
@@ -12,7 +12,7 @@ variable "instance_type" {
 }
 
 variable "key_name" {
-  description = "The name of the existing EC2 key pair"
+  description = "donatus"
   type        = string
 }
 
