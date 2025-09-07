@@ -1,64 +1,19 @@
 ---
-- name: Configure Amazon Linux 2 Server for The Monitor
+- name: Deploy The Monitor Application
   hosts: all
   become: yes
   gather_facts: no
 
-  pre_tasks:
-    # First gather minimal facts to detect package manager
-    - name: Gather minimal facts
-      setup:
-        gather_subset: min
-
-    # Skip Python installation since we already installed it via SSH
-    - name: Verify Python 3.8 is available
-      command: python3.8 --version
-      register: python_version
-      changed_when: false
-      ignore_errors: yes
-
-    - name: Display Python version
-      debug:
-        msg: "Python version: {{ python_version.stdout }}"
-
-    - name: Gather full facts after Python verification
-      setup:
-
   tasks:
-    # Update all packages
-    - name: Update all packages
-      package:
-        name: '*'
-        state: latest
-      when: ansible_pkg_mgr == "yum" or ansible_pkg_mgr == "dnf"
-
-    # Install required dependencies
-    - name: Install dependencies
-      package:
-        name:
-          - docker
-          - git
-          - curl
-          - wget
-        state: present
-      when: ansible_pkg_mgr == "yum" or ansible_pkg_mgr == "dnf"
-
-    # Install Docker Compose
-    - name: Install Docker Compose
-      get_url:
-        url: https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-linux-x86_64
-        dest: /usr/local/bin/docker-compose
-        mode: '0755'
-
-    # Start and enable Docker service
-    - name: Start and enable Docker service
+    # Verify Docker is running
+    - name: Check if Docker is running
       systemd:
         name: docker
         state: started
         enabled: yes
 
-    # Create app folder
-    - name: Create application directory
+    # Create application directory
+    - name: Create app directory
       file:
         path: /opt/the-monitor
         state: directory
@@ -66,7 +21,7 @@
         owner: ec2-user
         group: ec2-user
 
-    # Copy config files from repo to server
+    # Copy configuration files
     - name: Copy Docker Compose file
       copy:
         src: "../docker-compose.yml"
@@ -88,29 +43,15 @@
         owner: ec2-user
         group: ec2-user
 
-    # Change ownership of the entire directory
-    - name: Change ownership of app directory
-      file:
-        path: /opt/the-monitor
-        owner: ec2-user
-        group: ec2-user
-        recurse: yes
+    # Install Docker Compose
+    - name: Install Docker Compose
+      get_url:
+        url: https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
 
-    # Start Docker Compose stack
-    - name: Start Docker Compose stack
+    # Start the application with Docker Compose
+    - name: Start with Docker Compose
       community.docker.docker_compose_v2:
         project_src: /opt/the-monitor
         state: present
-
-    # Add ec2-user to docker group to run without sudo
-    - name: Add ec2-user to docker group
-      user:
-        name: ec2-user
-        groups: docker
-        append: yes
-
-  handlers:
-    - name: restart docker
-      systemd:
-        name: docker
-        state: restarted

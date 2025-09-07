@@ -26,7 +26,9 @@ jobs:
       - name: 🛠️ Setup Ansible
         run: |
           sudo apt-get update
-          sudo apt-get install -y ansible sshpass
+          sudo apt-get install -y python3-pip sshpass
+          pip3 install ansible==8.6.0
+          ansible-galaxy collection install community.docker
 
       # Step 4: Create terraform.tfvars
       - name: 📝 Create Terraform Variables File
@@ -125,35 +127,60 @@ jobs:
       - name: ⏳ Wait for SSH
         run: |
           echo "Waiting for SSH on $IP_ADDRESS..."
-          for i in {1..20}; do
+          for i in {1..10}; do
             if nc -z -w 5 $IP_ADDRESS 22; then
               echo "✅ SSH is available!"
               exit 0
             fi
-            echo "Attempt $i/20: still waiting..."
-            sleep 10
+            echo "Attempt $i/10: still waiting..."
+            sleep 5
           done
           echo "❌ SSH not available in time"
           exit 1
         env:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
 
-      # Step 11: Deploy with Ansible - SIMPLIFIED (Python handled in playbook)
-      - name: 🚀 Deploy with Ansible
+      # Step 11: Install Docker on Server - ADDED THIS STEP
+      - name: 🐳 Install Docker on Server
         run: |
           mkdir -p ~/.ssh/
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/donatus.pem
           chmod 600 ~/.ssh/donatus.pem
-
           ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts 2>/dev/null
 
-          echo "Testing SSH..."
-          ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no -o ConnectTimeout=30 ec2-user@$IP_ADDRESS "echo '✅ Connected!'"
+          echo "Testing SSH connection first..."
+          ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no ec2-user@$IP_ADDRESS "echo '✅ SSH connection successful!'"
 
-          # Install required Ansible collection
-          ansible-galaxy collection install community.docker
+          echo "Installing Docker on the server..."
+          ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no ec2-user@$IP_ADDRESS << 'EOF'
+          # Install Docker
+          sudo yum update -y
+          sudo amazon-linux-extras install docker -y
+          sudo yum install -y docker
+          
+          # Start and enable Docker
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          
+          # Add user to docker group
+          sudo usermod -a -G docker ec2-user
+          
+          # Verify Docker installation
+          sudo docker --version
+          echo "Docker installed successfully!"
+          EOF
+          
+          # Test Docker installation
+          echo "Testing Docker installation..."
+          ssh -i ~/.ssh/donatus.pem -o StrictHostKeyChecking=no ec2-user@$IP_ADDRESS "sudo docker ps"
+          echo "✅ Docker installation verified!"
+        env:
+          IP_ADDRESS: ${{ env.IP_ADDRESS }}
 
-          # Now run Ansible
+      # Step 12: Deploy with Ansible
+      - name: 🚀 Deploy with Ansible
+        run: |
+          echo "Running Ansible playbook..."
           ansible-playbook -i "$IP_ADDRESS," ansible/playbook.yml \
             --private-key=~/.ssh/donatus.pem \
             -u ec2-user \
@@ -161,7 +188,7 @@ jobs:
         env:
           IP_ADDRESS: ${{ env.IP_ADDRESS }}
 
-      # Step 12: Cleanup
+      # Step 13: Cleanup
       - name: 🧹 Cleanup
         if: always()
         run: rm -f terraform/tfplan
