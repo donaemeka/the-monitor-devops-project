@@ -28,7 +28,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3-pip sshpass
           pip3 install ansible==8.6.0
+          # Install required collections with full path
           ansible-galaxy collection install community.docker
+          # Also install docker-compose collection
+          ansible-galaxy collection install community.general
+          
 
       # Step 4: Create terraform.tfvars
       - name: 📝 Create Terraform Variables File

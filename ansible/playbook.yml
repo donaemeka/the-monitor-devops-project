@@ -84,16 +84,24 @@
       debug:
         msg: "Docker Compose installed: {{ install_docker_compose.changed }}"
 
-    # Start the application with Docker Compose
+    # Start the application with Docker Compose - SIMPLIFIED VERSION
     - name: Start with Docker Compose
-      community.docker.docker_compose_v2:
-        project_src: /opt/the-monitor
-        state: present
+      command: docker-compose -f /opt/the-monitor/docker-compose.yml up -d
+      args:
+        chdir: /opt/the-monitor
       register: docker_compose_result
 
     - name: Show Docker Compose result
       debug:
         msg: "Docker Compose deployment completed: {{ docker_compose_result.changed }}"
+
+    - name: Check running containers
+      command: docker ps
+      register: running_containers
+
+    - name: Show running containers
+      debug:
+        msg: "Running containers: {{ running_containers.stdout }}"
 
     - name: Print completion message
       debug:
