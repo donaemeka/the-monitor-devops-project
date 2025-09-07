@@ -28,43 +28,62 @@ it was Designed for developers and operations teams who need better visibility i
 
 ---
 ## Architecture Overview
+
 https://images/1-architecture-diagram.png
+
 System architecture showing all components and connections
 
 ## 📸 Screenshots
+
 Infrastructure Provisioning
+
 https://images/2-terraform-plan-output.png
+
 Terraform plan showing infrastructure changes
 
 https://images/3-terraform-apply-success.png
+
 Successful Terraform apply completion
 
 https://images/5-ec2-instance-running.png
+
 EC2 instance running in AWS console
 
 https://images/11-security-group-rules.png
+
 Security group configuration with proper rules
 
 CI/CD Pipeline
+
 https://images/04-github-actions-pipeline.png
+
 Successful GitHub Actions CI/CD pipeline
 
 Application Deployment
+
 https://images/6-docker-containers-active.png
+
 All Docker containers running successfully
 
+
 https://images/08-wordpress-site-live.png
+
 WordPress application live and accessible
 
 Monitoring Stack
+
 https://images/07-grafana-dashboard.png
+
 Grafana monitoring dashboard with system metrics
 
 https://images/09-prometheus-metrics.png
+
 Prometheus collecting and storing metrics
 
 Configuration Management
+
 https://images/10-ansible-execution.png
+
 Ansible playbook execution output
 
 
