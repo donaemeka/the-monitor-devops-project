@@ -1,0 +1,5 @@
+[monitor_servers]
+monitor_server_public_ip ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/your_monitor_key.pem
+
+## REPLACE: monitor_server_public_ip with your server's actual IP
+## REPLACE: your_monitor_key.pem with your actual private key filename
