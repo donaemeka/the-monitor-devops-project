@@ -10,48 +10,38 @@
       setup:
         gather_subset: min
 
-    - name: Install Python 3.8
-      yum:
-        name:
-          - python3.8
-        state: present
+    # Skip Python installation since we already installed it via SSH
+    - name: Verify Python 3.8 is available
+      command: python3.8 --version
+      register: python_version
+      changed_when: false
+      ignore_errors: yes
 
-    - name: Install pip for Python 3.8
-      get_url:
-        url: https://bootstrap.pypa.io/get-pip.py
-        dest: /tmp/get-pip.py
-        mode: '0755'
+    - name: Display Python version
+      debug:
+        msg: "Python version: {{ python_version.stdout }}"
 
-    - name: Install pip
-      command: python3.8 /tmp/get-pip.py
-      args:
-        creates: /usr/local/bin/pip3.8
-
-    - name: Set python3.8 as default
-      alternatives:
-        name: python3
-        path: /usr/bin/python3.8
-        priority: 100
-
-    - name: Gather full facts after Python upgrade
+    - name: Gather full facts after Python verification
       setup:
 
   tasks:
     # Update all packages
     - name: Update all packages
-      yum:
+      package:
         name: '*'
         state: latest
+      when: ansible_pkg_mgr == "yum" or ansible_pkg_mgr == "dnf"
 
     # Install required dependencies
     - name: Install dependencies
-      yum:
+      package:
         name:
           - docker
           - git
           - curl
           - wget
         state: present
+      when: ansible_pkg_mgr == "yum" or ansible_pkg_mgr == "dnf"
 
     # Install Docker Compose
     - name: Install Docker Compose
