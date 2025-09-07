@@ -27,65 +27,42 @@ A complete monitoring stack featuring:
 it was Designed for developers and operations teams who need better visibility into their applications and infrastructure without the complexity of enterprise solutions.
 
 ---
-## Architecture Overview
-
-./images/1-architecture-diagram.png
-
-System architecture showing all components and connections
-
 ## 📸 Screenshots
 
-Infrastructure Provisioning
+### Infrastructure Provisioning
+![Terraform Plan](./images/2-terraform-plan-output.png)
+*Terraform plan showing infrastructure changes*
 
-./images/2-terraform-plan-output.png
+![Terraform Apply](./images/3-terraform-apply-success.png)
+*Successful Terraform apply completion*
 
-Terraform plan showing infrastructure changes
+![EC2 Instance](./images/5-ec2-instance-running.png)
+*EC2 instance running in AWS console*
 
-./images/3-terraform-apply-success.png
+![Security Group](./images/11-security-group-rules.png)
+*Security group configuration with proper rules*
 
-Successful Terraform apply completion
+### CI/CD Pipeline
+![GitHub Actions](./images/04-github-actions-pipeline.png)
+*Successful GitHub Actions CI/CD pipeline*
 
-./images/5-ec2-instance-running.png
+### Application Deployment
+![Docker Containers](./images/6-docker-containers-active.png)
+*All Docker containers running successfully*
 
-EC2 instance running in AWS console
+![WordPress Site](./images/08-wordpress-site-live.png)
+*WordPress application live and accessible*
 
-./images/11-security-group-rules.png
+### Monitoring Stack
+![Grafana Dashboard](./images/07-grafana-dashboard.png)
+*Grafana monitoring dashboard with system metrics*
 
-Security group configuration with proper rules
+![Prometheus Metrics](./images/09-prometheus-metrics.png)
+*Prometheus collecting and storing metrics*
 
-CI/CD Pipeline
-
-./images/04-github-actions-pipeline.png
-
-Successful GitHub Actions CI/CD pipeline
-
-Application Deployment
-
-./images/6-docker-containers-active.png
-
-All Docker containers running successfully
-
-
-./images/08-wordpress-site-live.png
-
-WordPress application live and accessible
-
-Monitoring Stack
-
-./images/07-grafana-dashboard.png
-
-Grafana monitoring dashboard with system metrics
-
-./images/09-prometheus-metrics.png
-
-Prometheus collecting and storing metrics
-
-Configuration Management
-
-./images/10-ansible-execution.png
-
-Ansible playbook execution output
-
+### Configuration Management
+![Ansible Execution](./images/10-ansible-execution.png)
+*Ansible playbook execution output*
 
 ## 📋 Prerequisites
 
