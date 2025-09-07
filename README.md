@@ -1,7 +1,6 @@
 ## The Monitor Project
 
-this is a comprehensive monitoring solution built with **Docker**, featuring **WordPress**, **Prometheus**, **Grafana**, and a **Caddy reverse proxy**.  
-This project provides a complete **infrastructure-as-code solution** for deploying a monitoring stack on **AWS**, demonstrating key DevOps practices.
+this is a comprehensive monitoring solution built with **Docker**, featuring **WordPress**, **Prometheus**, **Grafana**, and a **Caddy reverse proxy**. This project provides a complete **infrastructure-as-code solution** for deploying a monitoring stack on **AWS**, demonstrating key DevOps practices.
 
 
 ## 🎯 Project Overview
@@ -25,20 +24,48 @@ A complete monitoring stack featuring:
 
 
 ### Who is it for?  
-Designed for developers and operations teams who need better visibility into their applications and infrastructure without the complexity of enterprise solutions.
+it was Designed for developers and operations teams who need better visibility into their applications and infrastructure without the complexity of enterprise solutions.
 
 ---
+## Architecture Overview
+https://images/1-architecture-diagram.png
+System architecture showing all components and connections
 
+## 📸 Screenshots
+Infrastructure Provisioning
+https://images/2-terraform-plan-output.png
+Terraform plan showing infrastructure changes
 
-## The Monitor Project - Architecture Overview
+https://images/3-terraform-apply-success.png
+Successful Terraform apply completion
 
+https://images/5-ec2-instance-running.png
+EC2 instance running in AWS console
 
+https://images/11-security-group-rules.png
+Security group configuration with proper rules
 
+CI/CD Pipeline
+https://images/04-github-actions-pipeline.png
+Successful GitHub Actions CI/CD pipeline
 
+Application Deployment
+https://images/6-docker-containers-active.png
+All Docker containers running successfully
 
+https://images/08-wordpress-site-live.png
+WordPress application live and accessible
 
+Monitoring Stack
+https://images/07-grafana-dashboard.png
+Grafana monitoring dashboard with system metrics
 
+https://images/09-prometheus-metrics.png
+Prometheus collecting and storing metrics
 
+Configuration Management
+https://images/10-ansible-execution.png
+Ansible playbook execution output
 
 
 ## 📋 Prerequisites
@@ -68,9 +95,9 @@ Before deploying, ensure you have:
 
 1. Clone the repository:
 
-   - git clone https://github.com/your-username/the-monitor-project.git
+   - git clone https://github.com/donaemeka/the-monitor-devops-project.git
 
-   - cd the-monitor-project
+   - cd the-monitor-devops-project
 
 
 2. Initialize Terraform:
@@ -220,7 +247,7 @@ services:
 2. Application Deployment:
 
 
-ansible-playbook -i "${SERVER_IP}," ansible/playbook.yml \--private-key=~/.ssh/yourkeypair.pem \-u ec2-user
+   - ansible-playbook -i "${SERVER_IP}," ansible/playbook.yml \--private-key=~/.ssh/yourkeypair.pem \-u ec2-user
 
 
 3. Verification:
@@ -252,13 +279,13 @@ After deployment, access the services at:
 
 ## Service	                                      URL	                                            Default Credentials
 
-- WordPress	                            http://your-elastic-ip/	                                 Setup during first access
+- WordPress	               ---             http://your-elastic-ip/	                ---               Setup during first access
 
-- Grafana	                           http://your-elastic-ip:3000                                     admin / admin123
+- Grafana	                 ---          http://your-elastic-ip:3000                 ---                        admin / admin123
 
-- Prometheus	                      http://your-elastic-ip:9090	                                         None
+- Prometheus	             ---          http://your-elastic-ip:9090	                ---                       None
 
-- Caddy Admin	                       http://your-elastic-ip:2019	                                         None
+- Caddy Admin	             ---          http://your-elastic-ip:2019	                ---                         None
 
 
 
